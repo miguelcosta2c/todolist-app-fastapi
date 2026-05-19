@@ -18,7 +18,11 @@ from app.models import User
 
 async def get_db() -> AsyncGenerator[AsyncSession]:
     async with AsyncSessionLocal() as session:
-        yield session
+        try:
+            yield session
+        except:
+            await session.rollback()
+            raise
 
 
 SessionDB = Annotated[AsyncSession, Depends(get_db)]

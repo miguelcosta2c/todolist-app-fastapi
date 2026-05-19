@@ -1,5 +1,6 @@
 from jose import ExpiredSignatureError, JWTError
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import (
@@ -7,48 +8,47 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
+from app.exc import InvalidCredentialsError, InvalidTokenError, UserAlreadyExistsError
 from app.models.token import UserToken
 from app.models.user import User
 from app.schemas.auth import UserCreate
 
 
-async def create_user(db: AsyncSession, data: UserCreate) -> User | None:
+async def create_user(db: AsyncSession, data: UserCreate) -> User:
     """
     Cria um usuário.
-    Se o usuário (email ou username) já existir, retorna None.
+    Se o usuário (email ou username) já existir, gera um erro.
     Caso contrário, cria e retorna o novo User.
 
     Campos = username, email, password
     """
-    query = select(User).where(
-        (User.email == data.email) | (User.username == data.username)
-    )
-    existing_user = await db.scalar(query)
-
-    if existing_user is not None:
-        return None
-
     user = User(
         username=data.username,
         email=data.email,
         password_hash=hash_password(data.password),
     )
 
-    db.add(user)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as err:
+        await db.rollback()
+        raise UserAlreadyExistsError from err
+
     await db.refresh(user)
 
     return user
 
 
-async def authenticate_user(db: AsyncSession, email: str, password: str) -> User | None:
+async def authenticate_user(db: AsyncSession, email: str, password: str) -> User:
     user = await db.scalar(select(User).where(User.email == email))
 
     if not user:
-        return None
+        # Usuario nao existe
+        raise InvalidCredentialsError
 
     if not verify_password(password, user.password_hash):
-        return None
+        # Senha incorreta
+        raise InvalidCredentialsError
 
     return user
 
@@ -59,12 +59,6 @@ async def get_refresh_token_in_db(
     return await db.scalar(
         select(UserToken).where(UserToken.refresh_token == refresh_token)
     )
-
-
-class InvalidTokenError(Exception):
-    def __init__(self, msg: str) -> None:
-        self.mensagem = msg
-        super().__init__(self.mensagem)
 
 
 async def validate_refresh_token(
@@ -99,14 +93,10 @@ async def validate_refresh_token(
     except (ExpiredSignatureError, JWTError) as err:
         # Verificando se o token esta expirado ou e invalido
 
-        try:
-            db_refresh_token.is_revoked = True
-            await db.commit()
-        except Exception:
-            await db.rollback()
-            raise
+        db_refresh_token.is_revoked = True
+        await db.commit()
 
-        msg = "Token expirado ou invalido, faca login novamente"
+        msg = "Token expirado ou invalido"
         raise InvalidTokenError(msg) from err
 
     else:
@@ -127,7 +117,7 @@ async def validate_refresh_token(
             raise InvalidTokenError(msg)
 
         if db_refresh_token.user_uuid != refresh_token_user_uuid:
-            msg = "Token revogado"
+            msg = "Token invalido"
             raise InvalidTokenError(msg)
 
         return db_refresh_token
