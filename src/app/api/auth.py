@@ -1,12 +1,10 @@
-from typing import Annotated, Any
+from datetime import datetime
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
-from fastapi.security import (
-    OAuth2PasswordRequestForm,
-)
+from fastapi import APIRouter, HTTPException, Response, status
 
-from app.core.dependencies import RefreshToken, SessionDB
-from app.core.settings import settings
+from app.core.dependencies import LoginForm, RefreshToken, SessionDB
+from app.core.settings import TIMEZONE, settings
 from app.exc import InvalidCredentialsError
 from app.schemas.api import Message
 from app.schemas.auth import TokenResponse, UserCreate, UserPublic
@@ -42,7 +40,7 @@ async def register(data: UserCreate, session: SessionDB) -> Any:
 
 @router.post("/token", response_model=TokenResponse)
 async def login(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    form_data: LoginForm,
     db: SessionDB,
     response: Response,
 ) -> Any:
@@ -57,6 +55,9 @@ async def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
         ) from err
+
+    user.last_login_at = datetime.now(TIMEZONE)
+    await db.commit()
 
     return await generate_tokens(user.uuid_, db, response)
 
@@ -85,4 +86,4 @@ async def logout(
     # Deletando o refresh token do cookie
     delete_cookie_refresh_token(response)
 
-    return {"message": "Logout realizado com sucesso"}
+    return "Logout realizado com sucesso"

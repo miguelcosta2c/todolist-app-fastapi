@@ -1,8 +1,13 @@
+import uuid
 from collections.abc import AsyncGenerator
 from typing import Annotated, Any
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import APIKeyCookie, OAuth2PasswordBearer
+from fastapi.security import (
+    APIKeyCookie,
+    OAuth2PasswordBearer,
+    OAuth2PasswordRequestForm,
+)
 from jose import ExpiredSignatureError, JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,6 +39,8 @@ SessionDB = Annotated[AsyncSession, Depends(get_db)]
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 refresh_cookie_scheme = APIKeyCookie(name="refresh_token", auto_error=False)
 
+LoginForm = Annotated[OAuth2PasswordRequestForm, Depends()]
+
 Token = Annotated[str, Depends(oauth2_scheme)]
 RefreshToken = Annotated[str | None, Depends(refresh_cookie_scheme)]
 
@@ -45,13 +52,11 @@ async def get_current_user(
 
     try:
         payload: dict[str, Any] = decode_token(token)
-
     except ExpiredSignatureError as err:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Access token expirado.",
         ) from err
-
     except JWTError as err:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -72,7 +77,7 @@ async def get_current_user(
             detail="Token inválido.",
         )
 
-    user = await db.scalar(select(User).where(User.uuid_ == user_uuid))
+    user = await db.scalar(select(User).where(User.uuid_ == uuid.UUID(user_uuid)))
 
     if user is None:
         raise HTTPException(
