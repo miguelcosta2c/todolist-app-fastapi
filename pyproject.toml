@@ -14,11 +14,11 @@ dependencies = [
   "aiosqlite>=0.22.1",
   "pydantic-settings>=2.14.1",
   "python-jose[cryptography]>=3.5.0",
-  "passlib[bcrypt]>=1.7.4",
   "pydantic[email]>=2.13.4",
   "python-multipart>=0.0.28",
   "alembic>=1.18.4",
-  "bcrypt==3.2.2",
+  "passlib>=1.7.4",
+  "argon2-cffi>=25.1.0",
 ]
 
 [project.urls]
