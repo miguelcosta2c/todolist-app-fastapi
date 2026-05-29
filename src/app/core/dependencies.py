@@ -45,10 +45,7 @@ Token = Annotated[str, Depends(oauth2_scheme)]
 RefreshToken = Annotated[str | None, Depends(refresh_cookie_scheme)]
 
 
-async def get_current_user(
-    token: Token,
-    db: SessionDB,
-) -> User:
+async def get_current_user(token: Token, db: SessionDB) -> User:
 
     try:
         payload: dict[str, Any] = decode_token(token)
@@ -89,3 +86,17 @@ async def get_current_user(
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+async def get_current_superuser(current_user: CurrentUser) -> User:
+
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Voce nao tem permissao para fazer esta acao",
+        )
+
+    return current_user
+
+
+CurrentSuperUser = Annotated[User, Depends(get_current_superuser)]

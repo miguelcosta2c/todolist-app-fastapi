@@ -1,42 +1,13 @@
 from jose import ExpiredSignatureError, JWTError
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import (
     decode_token,
-    hash_password,
     verify_password,
 )
-from app.exc import InvalidCredentialsError, InvalidTokenError, UserAlreadyExistsError
-from app.models.token import UserToken
-from app.models.user import User
-from app.schemas.auth import UserCreate
-
-
-async def create_user(db: AsyncSession, data: UserCreate) -> User:
-    """
-    Cria um usuário.
-    Se o usuário (email ou username) já existir, gera um erro.
-    Caso contrário, cria e retorna o novo User.
-
-    Campos = username, email, password
-    """
-    user = User(
-        username=data.username,
-        email=data.email,
-        password_hash=hash_password(data.password),
-    )
-
-    try:
-        await db.commit()
-    except IntegrityError as err:
-        await db.rollback()
-        raise UserAlreadyExistsError from err
-
-    await db.refresh(user)
-
-    return user
+from app.exc import InvalidCredentialsError, InvalidTokenError
+from app.models import User, UserToken
 
 
 async def authenticate_user(db: AsyncSession, email: str, password: str) -> User:

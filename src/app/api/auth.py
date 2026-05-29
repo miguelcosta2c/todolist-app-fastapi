@@ -5,19 +5,15 @@ from fastapi import APIRouter, HTTPException, Response, status
 
 from app.core.dependencies import LoginForm, RefreshToken, SessionDB
 from app.core.settings import TIMEZONE, settings
-from app.exc import InvalidCredentialsError
-from app.schemas.api import Message
-from app.schemas.auth import TokenResponse, UserCreate, UserPublic
+from app.exc import InvalidCredentialsError, UserAlreadyExistsError
+from app.schemas import Message, TokenResponse, UserCreate, UserPublic
 from app.services.api import (
     api_validate_refresh_token,
     delete_cookie_refresh_token,
     generate_tokens,
 )
-from app.services.auth import (
-    UserAlreadyExistsError,
-    authenticate_user,
-    create_user,
-)
+from app.services.auth import authenticate_user
+from app.services.user import UserDBService
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -28,9 +24,9 @@ IS_SECURE = settings.IS_SECURE
 @router.post(
     "/register", status_code=status.HTTP_201_CREATED, response_model=UserPublic
 )
-async def register(data: UserCreate, session: SessionDB) -> Any:
+async def register(data: UserCreate, db: SessionDB) -> Any:
     try:
-        user = await create_user(session, data)
+        user = await UserDBService(db).create_user(data)
     except UserAlreadyExistsError as err:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="User already exists"
@@ -86,4 +82,4 @@ async def logout(
     # Deletando o refresh token do cookie
     delete_cookie_refresh_token(response)
 
-    return "Logout realizado com sucesso"
+    return {"message": "Logout realizado com sucesso"}

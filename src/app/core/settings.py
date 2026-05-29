@@ -8,6 +8,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class _Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
+    HOST: str = Field(init=False)
+    PORT: int = Field(init=False)
     DATABASE_URL: str = Field(init=False)
     ALEMBIC_DATABASE_URL: str = Field(init=False)
     SECRET_KEY: str = Field(init=False)

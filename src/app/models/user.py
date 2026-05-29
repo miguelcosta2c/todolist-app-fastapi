@@ -28,6 +28,7 @@ class User(Base):
     status: Mapped[UserStatus] = mapped_column(
         SQLEnum(UserStatus, native_enum=False), default=UserStatus.ACTIVE
     )
+    is_superuser: Mapped[bool] = mapped_column(default=False)
     last_login_at: Mapped[datetime | None] = mapped_column(default=None)
     deleted_at: Mapped[datetime | None] = mapped_column(default=None)
     created_at: Mapped[datetime] = mapped_column(
