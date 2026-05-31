@@ -32,7 +32,7 @@ dependencies = [
 # ============================
 # Project dependency groups
 # ============================
-[project.dependency-groups]
+[dependency-groups]
 dev = [
     "ruff",
     "pyright",
@@ -43,6 +43,7 @@ dev = [
     "pytest-mock>=3.15.1",
     "freezegun>=1.5.5",
     "httpx>=0.28.1",
+    "testcontainers[postgres]>=4.14.2",
 ]
 
 [project.scripts]
@@ -112,7 +113,9 @@ asyncio_mode = "auto"
 addopts = "-s -vv --color=yes --tb=short --cov=app --cov-report=term-missing"
 pythonpath = ["src"]
 testpaths = ["tests"]
-asyncio_default_fixture_loop_scope = 'function'
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+
 # ============================
 # Tests (Coverage)
 # ============================
@@ -122,7 +125,7 @@ branch = true
 concurrency = ["greenlet", "thread"]
 
 [tool.coverage.report]
-omit = ["*/tests/*", "**/__init__.py", "*/utils/*"]
+omit = ["*/tests/*", "**/__init__.py", "*/utils/*", "**/scripts.py"]
 show_missing = true
 fail_under=70
 # ============================

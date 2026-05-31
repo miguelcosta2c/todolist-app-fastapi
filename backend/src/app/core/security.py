@@ -42,7 +42,7 @@ async def create_refresh_token(user_uuid: uuid.UUID, session: AsyncSession) -> s
     refresh_token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
     refresh_token_db = UserToken(
-        user_uuid=str(user_uuid),
+        user_uuid=user_uuid,
         refresh_token=refresh_token,
         expires_at=expire,
         created_at=now,

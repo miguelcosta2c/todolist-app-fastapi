@@ -1,3 +1,5 @@
+import uuid
+
 from jose import ExpiredSignatureError, JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -99,6 +101,8 @@ async def db_validate_refresh_token(
         if not refresh_token_user_uuid:
             msg = "Token invalido"
             raise InvalidTokenError(msg)
+
+        refresh_token_user_uuid = uuid.UUID(refresh_token_user_uuid)
 
         # Vendo se o token ja esta revogado
         if db_refresh_token.is_revoked:
