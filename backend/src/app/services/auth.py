@@ -1,5 +1,5 @@
 from jose import ExpiredSignatureError, JWTError
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import (
@@ -9,11 +9,15 @@ from app.core.security import (
 from app.exc import InvalidCredentialsError, InvalidTokenError
 from app.models import User, UserToken
 from app.models.user import UserStatus
-from app.services.user import UserDBService
 
 
 async def authenticate_user(db: AsyncSession, email: str, password: str) -> User:
-    user = await UserDBService(db).get_user_by(email=email, status=UserStatus.ACTIVE)
+    user = await db.scalar(
+        select(User).where(
+            User.email == email,
+            User.status == UserStatus.ACTIVE,
+        )
+    )
 
     if not user:
         # Usuario nao existe
@@ -106,7 +110,3 @@ async def db_validate_refresh_token(
             raise InvalidTokenError(msg)
 
         return db_refresh_token
-
-
-async def delete_refresh_tokens_from_user(db: AsyncSession, user: User) -> None:
-    await db.execute(delete(UserToken).where(UserToken.user_uuid == user.uuid_))

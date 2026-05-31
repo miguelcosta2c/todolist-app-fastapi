@@ -21,7 +21,8 @@ WORKDIR /code
 
 COPY --from=builder /code/.venv /code/.venv
 
-ENV PATH="/code/.venv/bin:$PATH"
+ENV PATH="/code/.venv/bin:$PATH" \
+    PYTHONPATH="/code"
 
 COPY --link ./src/app /code/app
 COPY --link ./alembic /code/alembic

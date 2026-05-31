@@ -19,7 +19,7 @@ from app.exc import (
 from app.models import User
 from app.models.user import UserStatus
 from app.schemas import UserCreate, UserRequestPassword
-from app.services.auth import delete_refresh_tokens_from_user
+from app.services import token
 
 
 class UserDBService:
@@ -132,7 +132,7 @@ class UserDBService:
         return user
 
     async def delete_user(self, user: User) -> None:
-        await delete_refresh_tokens_from_user(self.session, user)
+        await token.delete_refresh_tokens_from_user(self.session, user)
 
         user.deleted_at = datetime.now(tz=TIMEZONE)
         user.status = UserStatus.DELETED
