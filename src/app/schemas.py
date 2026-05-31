@@ -38,6 +38,8 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     username: str | None
     email: str | None
+    password: str
+    new_password: str
 
 
 class UserPublic(BaseModel):
@@ -52,6 +54,7 @@ class UserPrivate(BaseModel):
     uuid_: uuid.UUID
     username: str
     email: EmailStr
+    status: UserStatus
     last_login_at: datetime | None
     created_at: datetime
 
@@ -69,6 +72,19 @@ class UserSchema(BaseModel):
     deleted_at: datetime | None
     created_at: datetime
     updated_at: datetime
+
+
+class UserRequestPassword(BaseModel):
+    password: str
+    confirm_password: str
+
+    @model_validator(mode="after")
+    def validate_passwords(self) -> Self:
+        if self.password != self.confirm_password:
+            msg = "Senhas nao sao iguais"
+            raise ValueError(msg)
+
+        return self
 
 
 # =============================

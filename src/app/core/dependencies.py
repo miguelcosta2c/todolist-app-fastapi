@@ -1,4 +1,3 @@
-import uuid
 from collections.abc import AsyncGenerator
 from typing import Annotated, Any
 
@@ -9,12 +8,12 @@ from fastapi.security import (
     OAuth2PasswordRequestForm,
 )
 from jose import ExpiredSignatureError, JWTError
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import decode_token
 from app.db import AsyncSessionLocal
 from app.models import User
+from app.services.user import UserDBService
 
 # ==================================================================
 # Session Dependency
@@ -46,7 +45,6 @@ RefreshToken = Annotated[str | None, Depends(refresh_cookie_scheme)]
 
 
 async def get_current_user(token: Token, db: SessionDB) -> User:
-
     try:
         payload: dict[str, Any] = decode_token(token)
     except ExpiredSignatureError as err:
@@ -74,7 +72,7 @@ async def get_current_user(token: Token, db: SessionDB) -> User:
             detail="Token inválido.",
         )
 
-    user = await db.scalar(select(User).where(User.uuid_ == uuid.UUID(user_uuid)))
+    user = await UserDBService(db).get_user_by_uuid(user_uuid)
 
     if user is None:
         raise HTTPException(

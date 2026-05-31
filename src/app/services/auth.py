@@ -1,5 +1,5 @@
 from jose import ExpiredSignatureError, JWTError
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import (
@@ -8,10 +8,12 @@ from app.core.security import (
 )
 from app.exc import InvalidCredentialsError, InvalidTokenError
 from app.models import User, UserToken
+from app.models.user import UserStatus
+from app.services.user import UserDBService
 
 
 async def authenticate_user(db: AsyncSession, email: str, password: str) -> User:
-    user = await db.scalar(select(User).where(User.email == email))
+    user = await UserDBService(db).get_user_by(email=email, status=UserStatus.ACTIVE)
 
     if not user:
         # Usuario nao existe
@@ -25,14 +27,26 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
 
 
 async def get_refresh_token_in_db(
-    refresh_token: str, db: AsyncSession
+    db: AsyncSession, refresh_token: str
 ) -> UserToken | None:
     return await db.scalar(
         select(UserToken).where(UserToken.refresh_token == refresh_token)
     )
 
 
-async def validate_refresh_token(
+async def revoke_refresh_token_in_db(db: AsyncSession, refresh_token: str) -> None:
+    token = await get_refresh_token_in_db(db, refresh_token)
+
+    if token is None:
+        msg = "Espera-se que o refresh token esteja no banco de dados"
+        raise InvalidTokenError(msg)
+
+    token.is_revoked = True
+
+    await db.commit()
+
+
+async def db_validate_refresh_token(
     refresh_token: str,
     db: AsyncSession,
 ) -> UserToken:
@@ -92,3 +106,7 @@ async def validate_refresh_token(
             raise InvalidTokenError(msg)
 
         return db_refresh_token
+
+
+async def delete_refresh_tokens_from_user(db: AsyncSession, user: User) -> None:
+    await db.execute(delete(UserToken).where(UserToken.user_uuid == user.uuid_))

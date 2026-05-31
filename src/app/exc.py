@@ -6,6 +6,10 @@ class UserAlreadyExistsError(Exception):
     pass
 
 
+class UserAlreadyDeletedError(Exception):
+    pass
+
+
 class InvalidTokenError(Exception):
     def __init__(self, msg: str) -> None:
         self.mensagem = msg
