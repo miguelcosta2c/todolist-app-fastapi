@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Literal
 
-from sqlalchemy import select
+from sqlalchemy import desc, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,8 +18,17 @@ from app.exc import (
 )
 from app.models import User
 from app.models.user import UserStatus
-from app.schemas import UserCreate, UserRequestPassword
+from app.schemas import UserCreate, UserListFilters, UserRequestPassword
 from app.services import token
+
+ORDER_FIELDS = {
+    "id": User.id,
+    "updated_at": User.updated_at,
+    "deleted_at": User.deleted_at,
+    "username": User.username,
+    "email": User.email,
+    "created_at": User.created_at,
+}
 
 
 class UserDBService:
@@ -28,7 +37,7 @@ class UserDBService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def get_all_users(self, offset: int, limit: int) -> Sequence[User]:
+    async def get_all_users(self, filters: UserListFilters) -> Sequence[User]:
         """
         Retorna todos os usuários cadastrados no banco de dados.
 
@@ -37,7 +46,39 @@ class UserDBService:
             Retorna uma lista vazia caso nenhum usuário exista.
         """
 
-        result = await self.session.scalars(select(User).offset(offset).limit(limit))
+        stmt = select(User)
+
+        if not filters.include_deleted:
+            stmt = stmt.where(User.deleted_at.is_(None))
+
+        if filters.username:
+            stmt = stmt.where(User.username.ilike(f"%{filters.username}%"))
+
+        if filters.email:
+            stmt = stmt.where(User.email.ilike(f"%{filters.email}%"))
+
+        if filters.status:
+            stmt = stmt.where(User.status == filters.status)
+
+        if filters.is_superuser is not None:
+            stmt = stmt.where(User.is_superuser == filters.is_superuser)
+
+        if filters.created_after:
+            stmt = stmt.where(User.created_at >= filters.created_after)
+
+        if filters.created_before:
+            stmt = stmt.where(User.created_at <= filters.created_before)
+
+        column = ORDER_FIELDS.get(filters.order_by, User.created_at)
+
+        if filters.order_desc:
+            stmt = stmt.order_by(desc(column))
+        else:
+            stmt = stmt.order_by(column)
+
+        stmt = stmt.offset(filters.offset).limit(filters.limit)
+
+        result = await self.session.scalars(stmt)
         return result.all()
 
     async def get_user_by_uuid(

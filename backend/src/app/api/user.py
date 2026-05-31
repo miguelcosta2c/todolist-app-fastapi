@@ -1,23 +1,43 @@
+import uuid
 from typing import Any
 
 from fastapi import APIRouter, status
 
-from app.core.dependencies import CurrentSuperUser, CurrentUser, SessionDB
-from app.schemas import UserPrivate, UserRequestPassword, UserSchema, UserUpdate
+from app.core.dependencies import CurrentSuperUser, CurrentUser, SessionDB, UsersFilter
+from app.schemas import (
+    UserList,
+    UserPrivate,
+    UserRequestPassword,
+    UserSchema,
+    UserUpdate,
+)
 from app.services import api
-from app.services.user import UserDBService
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
-@router.get("/", response_model=list[UserSchema])
+@router.get("/", response_model=UserList)
 async def list_users(
-    db: SessionDB, only_superuser: CurrentSuperUser, offset: int = 0, limit: int = 10
+    db: SessionDB, only_superuser: CurrentSuperUser, filters: UsersFilter
 ) -> Any:
     """
     Superuser only
     """
-    return await UserDBService(db).get_all_users(offset, limit)
+    return await api.list_all_users(db, filters)
+
+
+@router.get("/{user_uuid}", response_model=UserSchema)
+async def get_user(
+    db: SessionDB, only_superuser: CurrentSuperUser, user_uuid: uuid.UUID
+) -> Any:
+    return await api.get_user_by_uuid(db, user_uuid)
+
+
+@router.delete("/{user_uuid}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user(
+    db: SessionDB, only_superuser: CurrentSuperUser, user_uuid: uuid.UUID
+) -> None:
+    await api.delete_user_by_uuid(db, user_uuid)
 
 
 @router.get("/me", response_model=UserPrivate)

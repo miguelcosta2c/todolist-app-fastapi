@@ -2,13 +2,14 @@ import uuid
 from datetime import datetime
 
 from fastapi import HTTPException, Response, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import create_access_token, create_refresh_token, verify_password
 from app.core.settings import TIMEZONE, settings
 from app.exc import InvalidCredentialsError, InvalidTokenError, UserAlreadyExistsError
 from app.models import User, UserToken
-from app.schemas import UserCreate, UserRequestPassword, UserUpdate
+from app.schemas import UserCreate, UserListFilters, UserRequestPassword, UserUpdate
 from app.services import auth
 from app.services.user import UserDBService
 
@@ -129,6 +130,36 @@ async def logout_user(
 # ================================
 # Api User Services
 # ================================
+
+
+async def list_all_users(db: AsyncSession, filters: UserListFilters) -> list[User]:
+    users = await UserDBService(db).get_all_users(filters)
+
+    total = await db.scalar(select(func.count(User.id)))
+
+    if total is None:
+        total = 0
+
+    return {
+        "result": users,
+        "total": total,
+        "offset": filters.offset,
+        "limit": filters.limit,
+    }
+
+
+async def get_user_by_uuid(db: AsyncSession, user_uuid: uuid.UUID) -> User:
+    return await UserDBService(db).get_user_by_uuid(user_uuid, only_active=False)
+
+
+async def delete_user_by_uuid(db: AsyncSession, user_uuid: uuid.UUID) -> None:
+    user = await UserDBService(db).get_user_by_uuid(user_uuid)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="O usuario com o id informado nao existe",
+        )
+    await UserDBService(db).delete_user(user)
 
 
 async def patch_current_user(db: AsyncSession, user: User, data: UserUpdate) -> User:
