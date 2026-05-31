@@ -6,7 +6,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class _Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
 
     HOST: str = Field(init=False)
     PORT: int = Field(init=False)
@@ -16,7 +18,7 @@ class _Settings(BaseSettings):
     ALGORITHM: str = Field(init=False)
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(init=False)
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(init=False)
-    ENVIRONMENT: Literal["development", "production"] = "development"
+    ENVIRONMENT: Literal["development", "production"] = Field(init=False)
 
     @property
     def DEBUG(self) -> bool:  # noqa: N802

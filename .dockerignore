@@ -1,0 +1,72 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual Environments
+.venv/
+venv/
+env/
+
+# Testes
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Linting
+.mypy_cache/
+.ruff_cache/
+
+# IDEs
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
+
+# Sistema Operacional
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Banco SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+# Variáveis de ambiente
+.env
+.env.*
+
+# Alembic
+alembic/versions/__pycache__/
+
+# Documentação
+docs/
+
+# Build
+dist/
+build/
+
+# Arquivos temporários
+tmp/
+temp/
+
+# Docker
+docker-compose.yml
+docker-compose.override.yml
+
+# Node (se houver frontend separado)
+node_modules/
+
+# Cache do uv
+.uv/
+
+justfile

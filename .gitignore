@@ -31,8 +31,12 @@ wheels/
 .mypy_cache/
 .pytest_cache/
 
-
+# Coverage
 .coverage
 htmlcov/
 
+# SQLite
 database.db
+
+# Docker
+docker-compose.prod.yaml
