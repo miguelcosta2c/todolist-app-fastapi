@@ -60,3 +60,8 @@ async def delete_user(db: SessionDB, user_uuid: uuid.UUID) -> None:
 @router.get("/tokens/", response_model=RefreshTokensList)
 async def list_tokens(db: SessionDB, filters: TokensFilter) -> Any:
     return await api.list_all_refresh_tokens(db, filters)
+
+
+@router.delete("/tokens/{token_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_token(db: SessionDB, token_id: int) -> None:
+    await api.delete_token_by_id(db, token_id)

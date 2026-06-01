@@ -54,5 +54,13 @@ async def list_all_user_tokens(
     return result.all()
 
 
+async def get_token_by_id(db: AsyncSession, token_id: int) -> UserToken | None:
+    return await db.scalar(select(UserToken).where(UserToken.id == token_id))
+
+
+async def delete_token_by_id(db: AsyncSession, token_id: int) -> None:
+    await db.execute(delete(UserToken).where(UserToken.id == token_id))
+
+
 async def delete_refresh_tokens_from_user(db: AsyncSession, user: User) -> None:
     await db.execute(delete(UserToken).where(UserToken.user_uuid == user.uuid_))

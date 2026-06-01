@@ -223,7 +223,7 @@ class UserList(BaseModel):
 # =============================
 
 
-class TokenResponse(AliasSchema):
+class TokenResponse(BaseModel):
     access_token: str
     token_type: str
 
@@ -231,6 +231,7 @@ class TokenResponse(AliasSchema):
 class RefreshTokenSchema(ResponseSchema):
     id: int
     user_uuid: uuid.UUID
+    refresh_token: str
     is_revoked: bool
     expires_at: datetime
     created_at: datetime

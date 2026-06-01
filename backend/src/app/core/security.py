@@ -31,7 +31,12 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def create_access_token(user_uuid: uuid.UUID) -> str:
     expire = datetime.now(tz=TIMEZONE) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {"sub": str(user_uuid), "exp": expire, "type": "access"}
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    print("=== TOKEN CRIADO ===")
+    print("UUID:", user_uuid)
+    print("PAYLOAD:", payload)
+    print("TOKEN:", token)
+    return token
 
 
 async def create_refresh_token(user_uuid: uuid.UUID, session: AsyncSession) -> str:

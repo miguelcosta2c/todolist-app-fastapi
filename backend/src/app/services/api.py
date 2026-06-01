@@ -161,7 +161,7 @@ async def _get_user_by_uuid(
     user = await user_service.get_user_by_uuid(user_uuid, only_active=False)
     if user is None:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="O usuario com o id informado nao existe",
         )
     return user
@@ -223,3 +223,13 @@ async def list_all_refresh_tokens(
         "offset": filters.offset,
         "limit": filters.limit,
     }
+
+
+async def delete_token_by_id(db: AsyncSession, token_id: int) -> None:
+    db_token = token.get_token_by_id(db, token_id)
+    if db_token is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Token nnao encontrado"
+        )
+    await token.delete_token_by_id(db, token_id)
+    await db.commit()

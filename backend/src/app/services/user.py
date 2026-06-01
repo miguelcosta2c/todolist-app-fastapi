@@ -86,7 +86,7 @@ class UserDBService:
         query = select(User).where(User.uuid_ == user_uuid)
 
         if only_active:
-            query.where(User.status == UserStatus.ACTIVE)
+            query = query.where(User.status == UserStatus.ACTIVE)
 
         return await self.session.scalar(query)
 

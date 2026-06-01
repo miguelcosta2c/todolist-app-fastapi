@@ -46,14 +46,24 @@ RefreshToken = Annotated[str | None, Depends(refresh_cookie_scheme)]
 
 
 async def get_current_user(token: Token, db: SessionDB) -> User:
+    print("\n=== TOKEN RECEBIDO ===")
+    print("TOKEN:", repr(token))
     try:
         payload: dict[str, Any] = decode_token(token)
+        print("\n=== PAYLOAD DECODIFICADO ===")
+        print(payload)
+
+        print("TYPE:", payload.get("type"))
+        print("SUB:", payload.get("sub"))
     except ExpiredSignatureError as err:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Access token expirado.",
         ) from err
     except JWTError as err:
+        print("\n=== ERRO JWT ===")
+        print("TIPO:", type(err).__name__)
+        print("ERRO:", str(err))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token inválido.",
@@ -66,6 +76,9 @@ async def get_current_user(token: Token, db: SessionDB) -> User:
         )
 
     user_uuid = payload.get("sub")
+    print("\n=== BUSCA USUÁRIO ===")
+    print("UUID:", user_uuid)
+    print("TIPO:", type(user_uuid))
 
     if not user_uuid:
         raise HTTPException(
