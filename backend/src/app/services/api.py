@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Any
 
 from fastapi import HTTPException, Response, status
 from sqlalchemy import func, select
@@ -9,8 +10,14 @@ from app.core.security import create_access_token, create_refresh_token, verify_
 from app.core.settings import TIMEZONE, settings
 from app.exc import InvalidCredentialsError, InvalidTokenError, UserAlreadyExistsError
 from app.models import User, UserToken
-from app.schemas import UserCreate, UserListFilters, UserRequestPassword, UserUpdate
-from app.services import auth
+from app.schemas import (
+    RefreshTokensListFilter,
+    UserCreate,
+    UserListFilters,
+    UserRequestPassword,
+    UserUpdate,
+)
+from app.services import auth, token
 from app.services.user import UserDBService
 
 # ================================
@@ -132,14 +139,10 @@ async def logout_user(
 # ================================
 
 
-async def list_all_users(db: AsyncSession, filters: UserListFilters) -> list[User]:
+async def list_all_users(db: AsyncSession, filters: UserListFilters) -> dict[str, Any]:
     users = await UserDBService(db).get_all_users(filters)
-
     total = await db.scalar(select(func.count(User.id)))
-
-    if total is None:
-        total = 0
-
+    total = 0 if total is None else total
     return {
         "result": users,
         "total": total,
@@ -149,17 +152,33 @@ async def list_all_users(db: AsyncSession, filters: UserListFilters) -> list[Use
 
 
 async def get_user_by_uuid(db: AsyncSession, user_uuid: uuid.UUID) -> User:
-    return await UserDBService(db).get_user_by_uuid(user_uuid, only_active=False)
+    return await _get_user_by_uuid(UserDBService(db), user_uuid)
 
 
-async def delete_user_by_uuid(db: AsyncSession, user_uuid: uuid.UUID) -> None:
-    user = await UserDBService(db).get_user_by_uuid(user_uuid)
+async def _get_user_by_uuid(
+    user_service: type[UserDBService], user_uuid: uuid.UUID
+) -> User:
+    user = await user_service.get_user_by_uuid(user_uuid, only_active=False)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="O usuario com o id informado nao existe",
         )
-    await UserDBService(db).delete_user(user)
+    return user
+
+
+async def patch_user_by_uuid(
+    db: AsyncSession, user_uuid: uuid.UUID, data: UserUpdate
+) -> User:
+    user_service = UserDBService(db)
+    user = _get_user_by_uuid(user_service, user_uuid)
+    return await user_service.update_user(user, data)
+
+
+async def delete_user_by_uuid(db: AsyncSession, user_uuid: uuid.UUID) -> None:
+    user_service = UserDBService(db)
+    user = _get_user_by_uuid(user_service, user_uuid)
+    await user_service.delete_user(user)
 
 
 async def patch_current_user(db: AsyncSession, user: User, data: UserUpdate) -> User:
@@ -185,3 +204,22 @@ async def delete_current_user(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Senha invalida"
         ) from err
+
+
+# ================================
+# Api Token Services
+# ================================
+
+
+async def list_all_refresh_tokens(
+    db: AsyncSession, filters: RefreshTokensListFilter
+) -> dict[str, Any]:
+    tokens = await token.list_all_user_tokens(db, filters)
+    total = await db.scalar(select(func.count(UserToken.id)))
+    total = 0 if total is None else total
+    return {
+        "result": tokens,
+        "total": total,
+        "offset": filters.offset,
+        "limit": filters.limit,
+    }

@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import decode_token
 from app.db import AsyncSessionLocal
 from app.models import User
-from app.schemas import UserListFilters
+from app.schemas import RefreshTokensListFilter, UserListFilters
 from app.services.user import UserDBService
 
 # ==================================================================
@@ -105,3 +105,4 @@ CurrentSuperUser = Annotated[User, Depends(get_current_superuser)]
 # ==================================================================
 
 UsersFilter = Annotated[UserListFilters, Depends()]
+TokensFilter = Annotated[RefreshTokensListFilter, Depends()]

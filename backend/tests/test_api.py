@@ -14,8 +14,8 @@ from app.services.user import UserDBService
 USER_DATA = {
     "username": "miguel",
     "email": "miguel@email.com",
-    "password": "senha123",
-    "confirm_password": "senha123",
+    "password": "Senha123@",
+    "confirm_password": "Senha123@",
 }
 
 

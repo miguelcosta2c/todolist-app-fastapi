@@ -10,15 +10,33 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from pydantic.alias_generators import to_camel
 
 from app.models.user import UserStatus
+
+
+class AliasSchema(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+
+class ResponseSchema(BaseModel):
+    model_config = ConfigDict(
+        from_attributes=True,
+        alias_generator=to_camel,
+        populate_by_name=True,
+    )
+
+
+class InputSchema(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
 
 # =============================
 # API Schemas
 # =============================
 
 
-class Message(BaseModel):
+class Message(AliasSchema):
     message: str
 
 
@@ -27,7 +45,7 @@ class Message(BaseModel):
 # =============================
 
 
-class UserListFilters(BaseModel):
+class UserListFilters(AliasSchema):
     username: str | None = None
     email: str | None = None
     status: UserStatus | None = None
@@ -52,7 +70,7 @@ class UserListFilters(BaseModel):
     order_desc: bool = True
 
 
-class UserCreate(BaseModel):
+class UserCreate(InputSchema):
     username: str = Field(
         min_length=3,
         max_length=30,
@@ -106,7 +124,11 @@ class UserCreate(BaseModel):
         return self
 
 
-class UserUpdate(BaseModel):
+class UserUpdate(InputSchema):
+    model_config = ConfigDict(
+        extra="forbid",
+        str_strip_whitespace=True,
+    )
     username: str | None = Field(
         default=None,
         min_length=3,
@@ -146,15 +168,13 @@ class UserUpdate(BaseModel):
         return value
 
 
-class UserPublic(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+class UserPublic(ResponseSchema):
     uuid_: uuid.UUID
     username: str
     email: EmailStr
 
 
-class UserPrivate(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+class UserPrivate(ResponseSchema):
     uuid_: uuid.UUID
     username: str
     email: EmailStr
@@ -163,8 +183,7 @@ class UserPrivate(BaseModel):
     created_at: datetime
 
 
-class UserSchema(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+class UserSchema(ResponseSchema):
     id: int
     uuid_: uuid.UUID
     username: str
@@ -178,7 +197,7 @@ class UserSchema(BaseModel):
     updated_at: datetime
 
 
-class UserRequestPassword(BaseModel):
+class UserRequestPassword(InputSchema):
     password: str
     confirm_password: str
 
@@ -192,6 +211,7 @@ class UserRequestPassword(BaseModel):
 
 
 class UserList(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     result: list[UserSchema]
     total: int
     offset: int
@@ -203,6 +223,41 @@ class UserList(BaseModel):
 # =============================
 
 
-class TokenResponse(BaseModel):
+class TokenResponse(AliasSchema):
     access_token: str
     token_type: str
+
+
+class RefreshTokenSchema(ResponseSchema):
+    id: int
+    user_uuid: uuid.UUID
+    is_revoked: bool
+    expires_at: datetime
+    created_at: datetime
+
+
+class RefreshTokensListFilter(AliasSchema):
+    id: int | None = None
+    user_uuid: uuid.UUID | None = None
+    is_revoked: bool | None = None
+
+    expires_after: datetime | None = None
+    expires_before: datetime | None = None
+
+    created_after: datetime | None = None
+    created_before: datetime | None = None
+
+    offset: int = 0
+    limit: int = 10
+
+    order_by: Literal["id", "user_uuid", "is_revoked", "expires_at", "created_at"] = (
+        "created_at"
+    )
+    order_desc: bool = True
+
+
+class RefreshTokensList(AliasSchema):
+    result: list[RefreshTokenSchema]
+    total: int
+    offset: int
+    limit: int

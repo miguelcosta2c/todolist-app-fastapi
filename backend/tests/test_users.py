@@ -2,10 +2,11 @@ import json
 from typing import Any
 
 import pytest
+from fastapi import status
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.schemas import UserCreate
+from app.schemas import UserCreate, UserListFilters
 from app.services.user import UserDBService
 
 # =============================
@@ -15,15 +16,15 @@ from app.services.user import UserDBService
 USER_DATA = {
     "username": "miguel",
     "email": "miguel@email.com",
-    "password": "senha123",
-    "confirm_password": "senha123",
+    "password": "Senha123@",
+    "confirm_password": "Senha123@",
 }
 
 SUPERUSER_DATA = {
     "username": "admin",
     "email": "admin@email.com",
-    "password": "admin123",
-    "confirm_password": "admin123",
+    "password": "Admin123@",
+    "confirm_password": "Admin123@",
 }
 
 
@@ -67,7 +68,7 @@ async def test_me_success(client: AsyncClient, session: AsyncSession) -> None:
         headers={"Authorization": f"Bearer {token}"},
     )
 
-    assert response.status_code == 200
+    assert response.status_code == status.HTTP_200_OK
     body = response.json()
     assert body["email"] == USER_DATA["email"]
     assert body["username"] == USER_DATA["username"]
@@ -75,7 +76,7 @@ async def test_me_success(client: AsyncClient, session: AsyncSession) -> None:
 
 async def test_me_unauthorized(client: AsyncClient) -> None:
     response = await client.get("/users/me")
-    assert response.status_code == 401
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 async def test_me_invalid_token(client: AsyncClient) -> None:
@@ -83,7 +84,7 @@ async def test_me_invalid_token(client: AsyncClient) -> None:
         "/users/me",
         headers={"Authorization": "Bearer token_invalido"},
     )
-    assert response.status_code == 401
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 # =============================
@@ -106,7 +107,7 @@ async def test_patch_me_username(client: AsyncClient, session: AsyncSession) -> 
         },
     )
 
-    assert response.status_code == 200
+    assert response.status_code == status.HTTP_200_OK
     assert response.json()["username"] == "novo_username"
 
 
@@ -122,12 +123,12 @@ async def test_patch_me_wrong_password(
         json={
             "username": "novo_username",
             "email": None,
-            "password": "senha_errada",
-            "new_password": "nova_senha",
+            "password": "SenhaErrada@123",
+            "new_password": "NovaSenha@123",
         },
     )
 
-    assert response.status_code == 401
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 async def test_patch_me_unauthorized(client: AsyncClient) -> None:
@@ -140,7 +141,7 @@ async def test_patch_me_unauthorized(client: AsyncClient) -> None:
             "new_password": "nova_senha",
         },
     )
-    assert response.status_code == 401
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 # =============================
@@ -167,7 +168,7 @@ async def test_delete_me_success(client: AsyncClient, session: AsyncSession) -> 
         },
     )
 
-    assert response.status_code == 204
+    assert response.status_code == status.HTTP_204_NO_CONTENT
 
 
 async def test_delete_me_wrong_password(
@@ -191,7 +192,7 @@ async def test_delete_me_wrong_password(
         },
     )
 
-    assert response.status_code == 400
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
 async def test_delete_me_passwords_do_not_match(
@@ -215,7 +216,7 @@ async def test_delete_me_passwords_do_not_match(
         },
     )
 
-    assert response.status_code == 422
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 async def test_delete_me_unauthorized(client: AsyncClient) -> None:
@@ -224,7 +225,7 @@ async def test_delete_me_unauthorized(client: AsyncClient) -> None:
         "/users/me",
         content=json.dumps({"password": "senha123", "confirm_password": "senha123"}),
     )
-    assert response.status_code == 401
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 # =============================
@@ -246,8 +247,8 @@ async def test_list_users_as_superuser(
         headers={"Authorization": f"Bearer {token}"},
     )
 
-    assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    assert response.status_code == status.HTTP_200_OK
+    assert isinstance(response.json()["result"], list)
 
 
 async def test_list_users_as_regular_user(
@@ -261,12 +262,12 @@ async def test_list_users_as_regular_user(
         headers={"Authorization": f"Bearer {token}"},
     )
 
-    assert response.status_code == 403
+    assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
 async def test_list_users_unauthorized(client: AsyncClient) -> None:
     response = await client.get("/users/")
-    assert response.status_code == 401
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 # =============================
@@ -280,18 +281,23 @@ async def test_get_user_by_invalid_field(session: AsyncSession) -> None:
 
 
 async def test_get_all_users(session: AsyncSession) -> None:
+    users_numero_experado = 2
     await create_user(session)
     await create_user(session, username="outro", email="outro@email.com")
 
-    users = await UserDBService(session).get_all_users(offset=0, limit=10)
-    assert len(users) == 2
+    filters = UserListFilters(offset=0, limit=10)
+
+    users = await UserDBService(session).get_all_users(filters)
+    assert len(users) == users_numero_experado
 
 
 async def test_get_all_users_with_pagination(session: AsyncSession) -> None:
     await create_user(session)
     await create_user(session, username="outro", email="outro@email.com")
 
-    users = await UserDBService(session).get_all_users(offset=0, limit=1)
+    filters = UserListFilters(offset=0, limit=1)
+
+    users = await UserDBService(session).get_all_users(filters)
     assert len(users) == 1
 
 

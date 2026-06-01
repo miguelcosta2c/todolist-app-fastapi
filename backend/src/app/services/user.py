@@ -71,12 +71,11 @@ class UserDBService:
 
         column = ORDER_FIELDS.get(filters.order_by, User.created_at)
 
-        if filters.order_desc:
-            stmt = stmt.order_by(desc(column))
-        else:
-            stmt = stmt.order_by(column)
-
-        stmt = stmt.offset(filters.offset).limit(filters.limit)
+        stmt = (
+            stmt.order_by(desc(column) if filters.order_desc else column)
+            .offset(filters.offset)
+            .limit(filters.limit)
+        )
 
         result = await self.session.scalars(stmt)
         return result.all()

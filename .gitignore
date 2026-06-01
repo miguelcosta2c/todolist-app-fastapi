@@ -40,3 +40,7 @@ database.db
 
 # Docker
 docker-compose.prod.yaml
+
+# Extra
+postgres-db-url.txt
+sql/
