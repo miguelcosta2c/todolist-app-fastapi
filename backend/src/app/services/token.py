@@ -42,7 +42,7 @@ async def list_all_user_tokens(
     if filters.created_before:
         stmt = stmt.where(UserToken.created_at < filters.created_before)
 
-    column = ORDER_FIELDS.get(filters.order_by, User.created_at)
+    column = ORDER_FIELDS[filters.order_by]
 
     stmt = (
         stmt.order_by(desc(column) if filters.order_desc else column)

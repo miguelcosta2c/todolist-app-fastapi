@@ -243,7 +243,7 @@ async def test_list_users_as_superuser(
     )
 
     response = await client.get(
-        "/users/",
+        "/users",
         headers={"Authorization": f"Bearer {token}"},
     )
 
@@ -258,7 +258,7 @@ async def test_list_users_as_regular_user(
     token = await get_access_token(client, USER_DATA["email"], USER_DATA["password"])
 
     response = await client.get(
-        "/users/",
+        "/users",
         headers={"Authorization": f"Bearer {token}"},
     )
 
@@ -266,7 +266,7 @@ async def test_list_users_as_regular_user(
 
 
 async def test_list_users_unauthorized(client: AsyncClient) -> None:
-    response = await client.get("/users/")
+    response = await client.get("/users")
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
