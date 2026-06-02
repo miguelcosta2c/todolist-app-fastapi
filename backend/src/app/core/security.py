@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import datetime, timedelta
 from typing import Any
@@ -8,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import TIMEZONE, settings
 from app.models.token import UserToken
+
+logger = logging.getLogger(__name__)
 
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = settings.ALGORITHM
@@ -32,10 +35,7 @@ def create_access_token(user_uuid: uuid.UUID) -> str:
     expire = datetime.now(tz=TIMEZONE) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {"sub": str(user_uuid), "exp": expire, "type": "access"}
     token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-    print("=== TOKEN CRIADO ===")
-    print("UUID:", user_uuid)
-    print("PAYLOAD:", payload)
-    print("TOKEN:", token)
+    logger.debug("Token de acesso criado para o usuário: %s", user_uuid)
     return token
 
 
@@ -56,6 +56,7 @@ async def create_refresh_token(user_uuid: uuid.UUID, session: AsyncSession) -> s
     session.add(refresh_token_db)
     await session.commit()
 
+    logger.debug("Refresh token criado para o usuário: %s", user_uuid)
     return refresh_token
 
 

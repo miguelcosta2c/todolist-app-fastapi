@@ -1,3 +1,4 @@
+import logging
 from collections.abc import AsyncGenerator
 from typing import Annotated, Any
 
@@ -13,8 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import decode_token
 from app.db import AsyncSessionLocal
 from app.models import User
-from app.schemas import RefreshTokensListFilter, UserListFilters
+from app.schemas import RefreshTokensListFilter, TodoListFilters, UserListFilters
 from app.services.user import UserDBService
+
+logger = logging.getLogger(__name__)
 
 # ==================================================================
 # Session Dependency
@@ -46,52 +49,46 @@ RefreshToken = Annotated[str | None, Depends(refresh_cookie_scheme)]
 
 
 async def get_current_user(token: Token, db: SessionDB) -> User:
-    print("\n=== TOKEN RECEBIDO ===")
-    print("TOKEN:", repr(token))
     try:
         payload: dict[str, Any] = decode_token(token)
-        print("\n=== PAYLOAD DECODIFICADO ===")
-        print(payload)
-
-        print("TYPE:", payload.get("type"))
-        print("SUB:", payload.get("sub"))
     except ExpiredSignatureError as err:
+        logger.warning("Token de acesso expirado: %s", err)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Access token expirado.",
+            detail="O token de acesso informado expirou.",
         ) from err
     except JWTError as err:
-        print("\n=== ERRO JWT ===")
-        print("TIPO:", type(err).__name__)
-        print("ERRO:", str(err))
+        logger.warning("Token de acesso inválido: %s", err)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token inválido.",
+            detail="O token de acesso informado é inválido.",
         ) from err
 
     if payload.get("type") != "access":
+        logger.warning(
+            "Tipo de token inválido para acesso: %s", payload.get("type")
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token inválido para esta operação.",
+            detail="O token informado não é válido para esta operação.",
         )
 
     user_uuid = payload.get("sub")
-    print("\n=== BUSCA USUÁRIO ===")
-    print("UUID:", user_uuid)
-    print("TIPO:", type(user_uuid))
 
     if not user_uuid:
+        logger.warning("Token de acesso não contém o identificador do usuário")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token inválido.",
+            detail="O token de acesso informado é inválido.",
         )
 
     user = await UserDBService(db).get_user_by_uuid(user_uuid)
 
     if user is None:
+        logger.warning("Usuário não encontrado para o UUID: %s", user_uuid)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Usuário não encontrado.",
+            detail="O usuário associado a este token não foi encontrado.",
         )
 
     return user
@@ -103,9 +100,13 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 async def get_current_superuser(current_user: CurrentUser) -> User:
 
     if not current_user.is_superuser:
+        logger.warning(
+            "Acesso negado ao usuário %s: permissão de superusuário necessária",
+            current_user.uuid_,
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Voce nao tem permissao para fazer esta acao",
+            detail="Você não possui permissão para realizar esta ação.",
         )
 
     return current_user
@@ -119,3 +120,4 @@ CurrentSuperUser = Annotated[User, Depends(get_current_superuser)]
 
 UsersFilter = Annotated[UserListFilters, Depends()]
 TokensFilter = Annotated[RefreshTokensListFilter, Depends()]
+TodosFilter = Annotated[TodoListFilters, Depends()]

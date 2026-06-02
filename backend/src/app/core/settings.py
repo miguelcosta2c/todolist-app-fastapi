@@ -19,6 +19,7 @@ class _Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(init=False)
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(init=False)
     ENVIRONMENT: Literal["development", "production"] = Field(init=False)
+    LOG_LEVEL: str = Field(default="INFO", init=False)
 
     @property
     def DEBUG(self) -> bool:  # noqa: N802

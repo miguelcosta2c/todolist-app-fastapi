@@ -210,7 +210,7 @@ async def test_logout_success(client: AsyncClient, session: AsyncSession) -> Non
     response = await client.post("/auth/revoke_token")
 
     assert response.status_code == status.HTTP_200_OK
-    assert response.json()["message"] == "Logout realizado com sucesso"
+    assert response.json()["message"] == "Logout realizado com sucesso."
     assert "refresh_token" not in response.cookies
 
 
@@ -538,7 +538,7 @@ class TestGetCurrentUserExceptions:
             )
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert "expirado" in response.json()["detail"]
+        assert "expirou" in response.json()["detail"]
 
     async def test_wrong_token_type(self, client: AsyncClient) -> None:
         with patch(
@@ -551,7 +551,7 @@ class TestGetCurrentUserExceptions:
             )
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert "Token inválido para esta operação" in response.json()["detail"]
+        assert "não é válido para esta operação" in response.json()["detail"]
 
     async def test_missing_sub(self, client: AsyncClient) -> None:
         with patch(
@@ -564,7 +564,7 @@ class TestGetCurrentUserExceptions:
             )
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert "Token inválido" in response.json()["detail"]
+        assert "inválido" in response.json()["detail"]
 
     async def test_user_not_found(self, client: AsyncClient) -> None:
         some_uuid = uuid.uuid4()
@@ -584,4 +584,4 @@ class TestGetCurrentUserExceptions:
             )
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert "não encontrado" in response.json()["detail"]
+        assert "não foi encontrado" in response.json()["detail"]

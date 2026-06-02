@@ -12,6 +12,7 @@ from pydantic import (
 )
 from pydantic.alias_generators import to_camel
 
+from app.models.todo import TodoPriority, TodoStatus
 from app.models.user import UserStatus
 
 
@@ -89,7 +90,10 @@ class UserCreate(InputSchema):
         value = value.strip()
 
         if value.startswith("_") or value.endswith("_"):
-            msg = "Username não pode começar ou terminar com _"
+            msg = (
+                "O nome de usuário não pode começar ou terminar com o caractere"
+                " underscore (_)."
+            )
             raise ValueError(msg)
 
         return value
@@ -98,19 +102,19 @@ class UserCreate(InputSchema):
     @classmethod
     def validate_password(cls, value: str) -> str:
         if not any(c.isupper() for c in value):
-            msg = "A senha deve conter pelo menos uma letra maiúscula"
+            msg = "A senha deve conter pelo menos uma letra maiúscula."
             raise ValueError(msg)
 
         if not any(c.islower() for c in value):
-            msg = "A senha deve conter pelo menos uma letra minúscula"
+            msg = "A senha deve conter pelo menos uma letra minúscula."
             raise ValueError(msg)
 
         if not any(c.isdigit() for c in value):
-            msg = "A senha deve conter pelo menos um número"
+            msg = "A senha deve conter pelo menos um número."
             raise ValueError(msg)
 
         if not any(not c.isalnum() for c in value):
-            msg = "A senha deve conter pelo menos um caractere especial"
+            msg = "A senha deve conter pelo menos um caractere especial."
             raise ValueError(msg)
 
         return value
@@ -118,7 +122,7 @@ class UserCreate(InputSchema):
     @model_validator(mode="after")
     def validate_passwords(self) -> Self:
         if self.password != self.confirm_password:
-            msg = "Senhas não são iguais"
+            msg = "As senhas informadas não são iguais."
             raise ValueError(msg)
 
         return self
@@ -150,19 +154,19 @@ class UserUpdate(InputSchema):
             return value
 
         if not any(c.isupper() for c in value):
-            msg = "A senha deve conter pelo menos uma letra maiúscula"
+            msg = "A senha deve conter pelo menos uma letra maiúscula."
             raise ValueError(msg)
 
         if not any(c.islower() for c in value):
-            msg = "A senha deve conter pelo menos uma letra minúscula"
+            msg = "A senha deve conter pelo menos uma letra minúscula."
             raise ValueError(msg)
 
         if not any(c.isdigit() for c in value):
-            msg = "A senha deve conter pelo menos um número"
+            msg = "A senha deve conter pelo menos um número."
             raise ValueError(msg)
 
         if not any(not c.isalnum() for c in value):
-            msg = "A senha deve conter pelo menos um caractere especial"
+            msg = "A senha deve conter pelo menos um caractere especial."
             raise ValueError(msg)
 
         return value
@@ -204,7 +208,7 @@ class UserRequestPassword(InputSchema):
     @model_validator(mode="after")
     def validate_passwords(self) -> Self:
         if self.password != self.confirm_password:
-            msg = "Senhas nao sao iguais"
+            msg = "As senhas informadas não são iguais."
             raise ValueError(msg)
 
         return self
@@ -259,6 +263,79 @@ class RefreshTokensListFilter(AliasSchema):
 
 class RefreshTokensList(AliasSchema):
     result: list[RefreshTokenSchema]
+    total: int
+    offset: int
+    limit: int
+
+
+# =============================
+# Todos Schemas
+# =============================
+
+
+class TodoListFilters(AliasSchema):
+    status: TodoStatus | None = None
+    priority: TodoPriority | None = None
+
+    created_after: datetime | None = None
+    created_before: datetime | None = None
+
+    offset: int = Field(default=0, ge=0)
+    limit: int = Field(default=20, ge=1, le=100)
+
+    order_by: Literal[
+        "created_at",
+        "updated_at",
+        "due_date",
+        "priority",
+        "status",
+    ] = "created_at"
+
+    order_desc: bool = True
+
+
+class TodoCreate(InputSchema):
+    name: str = Field(min_length=1, max_length=100)
+    description: str = Field(default="", max_length=500)
+    priority: TodoPriority = TodoPriority.NONE
+    due_date: datetime | None = None
+
+
+class TodoUpdate(InputSchema):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    description: str | None = Field(default=None, max_length=500)
+    status: TodoStatus | None = None
+    priority: TodoPriority | None = None
+    due_date: datetime | None = None
+
+
+class TodoResponse(ResponseSchema):
+    uuid_: uuid.UUID
+    name: str
+    description: str
+    status: TodoStatus
+    priority: TodoPriority
+    due_date: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class TodoSchema(ResponseSchema):
+    id: int
+    uuid_: uuid.UUID
+    name: str
+    description: str
+    status: TodoStatus
+    priority: TodoPriority
+    due_date: datetime | None
+    user_uuid: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class TodoList(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    result: list[TodoSchema]
     total: int
     offset: int
     limit: int

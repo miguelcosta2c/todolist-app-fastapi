@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from jose import ExpiredSignatureError, JWTError
@@ -12,6 +13,8 @@ from app.exc import InvalidCredentialsError, InvalidTokenError
 from app.models import User, UserToken
 from app.models.user import UserStatus
 
+logger = logging.getLogger(__name__)
+
 
 async def authenticate_user(db: AsyncSession, email: str, password: str) -> User:
     user = await db.scalar(
@@ -22,11 +25,11 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
     )
 
     if not user:
-        # Usuario nao existe
+        logger.debug("Tentativa de autenticação com e-mail inexistente: %s", email)
         raise InvalidCredentialsError
 
     if not verify_password(password, user.password_hash):
-        # Senha incorreta
+        logger.debug("Tentativa de autenticação com senha incorreta para: %s", email)
         raise InvalidCredentialsError
 
     return user
@@ -44,7 +47,7 @@ async def revoke_refresh_token_in_db(db: AsyncSession, refresh_token: str) -> No
     token = await get_refresh_token_in_db(db, refresh_token)
 
     if token is None:
-        msg = "Espera-se que o refresh token esteja no banco de dados"
+        msg = "O refresh token informado não foi encontrado na base de dados."
         raise InvalidTokenError(msg)
 
     token.is_revoked = True
@@ -56,61 +59,41 @@ async def db_validate_refresh_token(
     refresh_token: str,
     db: AsyncSession,
 ) -> UserToken:
-    """
-    Faz verificações para confirmar se o "refresh token" é valido.
-
-    Esta função verifica se ele existe no banco
-    verifica se ele é invalido ou está expirado
-    verifica se o tipo do token é o tipo certo
-    e se o token já está revogado.
-
-    retorna a instância do refresh token no banco de dados.
-    """
-    # ============================
-    # Verificando o token bruto
-    # ============================
-
     db_refresh_token = await get_refresh_token_in_db(refresh_token=refresh_token, db=db)
 
-    # Verificando se o token esta no banco de dados
     if db_refresh_token is None:
-        msg = "Espera-se que o refresh token esteja no banco de dados"
+        msg = "O refresh token informado não foi encontrado na base de dados."
         raise InvalidTokenError(msg)
 
-    # Vendo se o token enviado ja e invalido ou ja foi expirado
     try:
         payload = decode_token(refresh_token)
 
     except (ExpiredSignatureError, JWTError) as err:
-        # Verificando se o token esta expirado ou e invalido
-
         db_refresh_token.is_revoked = True
         await db.commit()
 
-        msg = "Token expirado ou invalido"
+        msg = "O refresh token informado expirou ou é inválido."
         raise InvalidTokenError(msg) from err
 
     else:
-        # Vendo se o tipo do token enviado e valido
         if payload.get("type") != "refresh":
-            msg = 'Espera-se que o token seja do tipo "refresh"'
+            msg = "O token informado não é do tipo refresh."
             raise InvalidTokenError(msg)
 
         refresh_token_user_uuid = payload.get("sub")
 
         if not refresh_token_user_uuid:
-            msg = "Token invalido"
+            msg = "O refresh token informado é inválido."
             raise InvalidTokenError(msg)
 
         refresh_token_user_uuid = uuid.UUID(refresh_token_user_uuid)
 
-        # Vendo se o token ja esta revogado
         if db_refresh_token.is_revoked:
-            msg = "Token revogado"
+            msg = "O refresh token informado já foi revogado."
             raise InvalidTokenError(msg)
 
         if db_refresh_token.user_uuid != refresh_token_user_uuid:
-            msg = "Token invalido"
+            msg = "O refresh token informado é inválido."
             raise InvalidTokenError(msg)
 
         return db_refresh_token

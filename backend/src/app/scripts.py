@@ -22,18 +22,18 @@ async def _create_superuser(data: UserCreate) -> None:
 def create_superuser() -> None:
     while True:
         console.print("[green]=[/]" * 100)
-        console.print("[green]Create Superuser[/]")
+        console.print("[green]Criação de Superusuário[/]")
         console.print("[green]=[/]" * 100)
 
         data = {
-            "username": Prompt.ask("[cyan]Username[/]"),
+            "username": Prompt.ask("[cyan]Nome de usuário[/]"),
             "email": Prompt.ask("[cyan]E-mail[/]"),
             "password": Prompt.ask(
-                "[cyan]Password[/]",
+                "[cyan]Senha[/]",
                 password=True,
             ),
             "confirm_password": Prompt.ask(
-                "[cyan]Confirm password[/]",
+                "[cyan]Confirmar senha[/]",
                 password=True,
             ),
         }
@@ -43,26 +43,26 @@ def create_superuser() -> None:
             break
 
         except ValidationError as err:
-            console.print("\n[red]Validation error:[/]\n")
+            console.print("\n[red]Erro de validação:[/]\n")
 
             for error in err.errors():
                 console.print(f"[red]- {error['msg']}[/]")
 
     console.print()
-    console.print("Creating superuser...")
+    console.print("Criando superusuário...")
 
     try:
         asyncio.run(_create_superuser(data=user))
     except UserAlreadyExistsError:
-        console.print("\n[red]Integrity error:[/]\n")
+        console.print("\n[red]Erro de integridade:[/]\n")
 
         console.print(
-            "[red]- Um erro de integridade do banco de dados ocorreu, verifique"
-            " se o usuario ja nao existe na base de dados[/]"
+            "[red]- Ocorreu um erro de integridade no banco de dados."
+            " Verifique se o usuário já não existe na base de dados.[/]"
         )
     else:
         console.print()
-        console.print("Superuser created")
+        console.print("Superusuário criado com sucesso.")
 
 
 def server() -> None:

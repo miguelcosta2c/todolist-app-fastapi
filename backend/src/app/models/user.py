@@ -1,12 +1,17 @@
 import uuid
 from datetime import datetime
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, Index, String, func, text
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
+
+if TYPE_CHECKING:
+    from .todo import Todo
+    from .token import UserToken
 
 
 class UserStatus(StrEnum):
@@ -58,4 +63,12 @@ class User(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+
+    todos: Mapped[list["Todo"]] = relationship(
+        "Todo", back_populates="owner", cascade="all, delete-orphan"
+    )
+
+    sessions: Mapped[list["UserToken"]] = relationship(
+        "UserToken", back_populates="user"
     )

@@ -93,7 +93,7 @@ class UserDBService:
     async def get_user_by(self, **kwargs: str) -> User | None:
         for field in kwargs:
             if field not in self.UserFields.__args__:
-                msg = f"Campo inválido: {field}"
+                msg = f"O campo informado é inválido: {field}."
                 raise ValueError(msg)
 
         return await self.session.scalar(
