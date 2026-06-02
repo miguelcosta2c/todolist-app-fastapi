@@ -93,10 +93,12 @@ async def register_user(db: AsyncSession, data: UserCreate) -> User:
     try:
         user = await UserDBService(db).create_user(data)
     except UserAlreadyExistsError as err:
+        logger.warning("Tentativa de cadastro com e-mail já existente: %s", data.email)
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="O usuário informado já existe na base de dados.",
         ) from err
+    logger.info("Usuário cadastrado com sucesso: %s", user.uuid_)
     return user
 
 
@@ -110,6 +112,9 @@ async def login_user(
             password,
         )
     except InvalidCredentialsError as err:
+        logger.warning(
+            "Tentativa de login com credenciais inválidas para: %s", username
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="As credenciais fornecidas são inválidas.",
@@ -118,6 +123,7 @@ async def login_user(
     user.last_login_at = datetime.now(TIMEZONE)
     await db.commit()
 
+    logger.info("Login realizado com sucesso: %s", user.uuid_)
     return await generate_tokens(db, user.uuid_, response)
 
 
@@ -126,6 +132,7 @@ async def generate_new_tokens_user(
 ) -> dict[str, str]:
     refresh_token = await validate_refresh_token(db, user_refresh_token, response)
     await auth.revoke_refresh_token_in_db(db, refresh_token.refresh_token)
+    logger.info("Tokens renovados para o usuário: %s", refresh_token.user_uuid)
     return await generate_tokens(db, refresh_token.user_uuid, response)
 
 
@@ -135,6 +142,7 @@ async def logout_user(
     refresh_token = await validate_refresh_token(db, user_refresh_token, response)
     await auth.revoke_refresh_token_in_db(db, refresh_token.refresh_token)
     delete_cookie_refresh_token(response)
+    logger.info("Logout realizado para o usuário: %s", refresh_token.user_uuid)
     return {"message": "Logout realizado com sucesso."}
 
 
@@ -164,6 +172,7 @@ async def _get_user_by_uuid(
 ) -> User:
     user = await user_service.get_user_by_uuid(user_uuid, only_active=False)
     if user is None:
+        logger.warning("Usuário não encontrado para o UUID: %s", user_uuid)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="O usuário solicitado não foi encontrado.",
@@ -177,13 +186,16 @@ async def patch_user_by_uuid(
     user_service = UserDBService(db)
     user = await _get_user_by_uuid(user_service, user_uuid)
     update_data = data.model_dump(exclude_unset=True, exclude_none=True)
-    return await user_service.update_user(user, update_data)
+    updated_user = await user_service.update_user(user, update_data)
+    logger.info("Administrador atualizou o usuário: %s", user_uuid)
+    return updated_user
 
 
 async def delete_user_by_uuid(db: AsyncSession, user_uuid: uuid.UUID) -> None:
     user_service = UserDBService(db)
     user = await _get_user_by_uuid(user_service, user_uuid)
     await user_service.delete_user(user)
+    logger.info("Administrador excluiu o usuário: %s", user_uuid)
 
 
 async def patch_current_user(db: AsyncSession, user: User, data: UserUpdate) -> User:
@@ -193,12 +205,17 @@ async def patch_current_user(db: AsyncSession, user: User, data: UserUpdate) -> 
     )
 
     if not verify_password(update_data.pop("password"), user.password_hash):
+        logger.warning(
+            "Tentativa de atualização de perfil com senha incorreta: %s", user.uuid_
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="A senha fornecida está incorreta.",
         )
 
-    return await UserDBService(db).update_user(user, update_data)
+    updated_user = await UserDBService(db).update_user(user, update_data)
+    logger.info("Perfil atualizado pelo usuário: %s", user.uuid_)
+    return updated_user
 
 
 async def delete_current_user(
@@ -207,10 +224,14 @@ async def delete_current_user(
     try:
         await UserDBService(db).delete_user_with_password(user, data)
     except InvalidCredentialsError as err:
+        logger.warning(
+            "Tentativa de exclusão de conta com senha incorreta: %s", user.uuid_
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="A senha fornecida é inválida.",
         ) from err
+    logger.info("Conta excluída pelo usuário: %s", user.uuid_)
 
 
 # ================================
@@ -235,12 +256,14 @@ async def list_all_refresh_tokens(
 async def delete_token_by_id(db: AsyncSession, token_id: int) -> None:
     db_token = await token.get_token_by_id(db, token_id)
     if db_token is None:
+        logger.warning("Token não encontrado para exclusão: %s", token_id)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="O token solicitado não foi encontrado.",
         )
     await token.delete_token_by_id(db, token_id)
     await db.commit()
+    logger.info("Administrador excluiu o token: %s", token_id)
 
 
 # ================================
@@ -267,7 +290,9 @@ async def list_user_todos(
 async def create_user_todo(
     db: AsyncSession, user_uuid: uuid.UUID, data: TodoCreate
 ) -> Todo:
-    return await TodoDBService(db).create_todo(data, user_uuid)
+    todo = await TodoDBService(db).create_todo(data, user_uuid)
+    logger.info("Tarefa criada pelo usuário %s: %s", user_uuid, todo.uuid_)
+    return todo
 
 
 async def _get_user_todo(
@@ -275,6 +300,9 @@ async def _get_user_todo(
 ) -> Todo:
     todo = await TodoDBService(db).get_todo_by_uuid(todo_uuid, user_uuid)
     if todo is None:
+        logger.warning(
+            "Tarefa não encontrada para o usuário %s: %s", user_uuid, todo_uuid
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="A tarefa solicitada não foi encontrada.",
@@ -296,7 +324,9 @@ async def patch_user_todo(
 ) -> Todo:
     todo = await _get_user_todo(db, user_uuid, todo_uuid)
     update_data = data.model_dump(exclude_unset=True, exclude_none=True)
-    return await TodoDBService(db).update_todo(todo, update_data)
+    updated_todo = await TodoDBService(db).update_todo(todo, update_data)
+    logger.info("Tarefa atualizada pelo usuário %s: %s", user_uuid, todo_uuid)
+    return updated_todo
 
 
 async def delete_user_todo(
@@ -304,6 +334,7 @@ async def delete_user_todo(
 ) -> None:
     todo = await _get_user_todo(db, user_uuid, todo_uuid)
     await TodoDBService(db).delete_todo(todo)
+    logger.info("Tarefa excluída pelo usuário %s: %s", user_uuid, todo_uuid)
 
 
 # ================================
@@ -311,9 +342,7 @@ async def delete_user_todo(
 # ================================
 
 
-async def list_all_todos(
-    db: AsyncSession, filters: TodoListFilters
-) -> dict[str, Any]:
+async def list_all_todos(db: AsyncSession, filters: TodoListFilters) -> dict[str, Any]:
     todos = await TodoDBService(db).get_all_todos(filters)
     total = await db.scalar(select(func.count(Todo.id)))
     total = 0 if total is None else total
@@ -328,6 +357,7 @@ async def list_all_todos(
 async def _get_todo_by_uuid_admin(db: AsyncSession, todo_uuid: uuid.UUID) -> Todo:
     todo = await TodoDBService(db).get_todo_by_uuid_admin(todo_uuid)
     if todo is None:
+        logger.warning("Administrador: tarefa não encontrada: %s", todo_uuid)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="A tarefa solicitada não foi encontrada.",
@@ -335,14 +365,11 @@ async def _get_todo_by_uuid_admin(db: AsyncSession, todo_uuid: uuid.UUID) -> Tod
     return todo
 
 
-async def admin_get_todo_by_uuid(
-    db: AsyncSession, todo_uuid: uuid.UUID
-) -> Todo:
+async def admin_get_todo_by_uuid(db: AsyncSession, todo_uuid: uuid.UUID) -> Todo:
     return await _get_todo_by_uuid_admin(db, todo_uuid)
 
 
-async def admin_delete_todo_by_uuid(
-    db: AsyncSession, todo_uuid: uuid.UUID
-) -> None:
+async def admin_delete_todo_by_uuid(db: AsyncSession, todo_uuid: uuid.UUID) -> None:
     todo = await _get_todo_by_uuid_admin(db, todo_uuid)
     await TodoDBService(db).delete_todo(todo)
+    logger.info("Administrador excluiu a tarefa: %s", todo_uuid)
