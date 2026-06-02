@@ -115,6 +115,9 @@ pythonpath = ["src"]
 testpaths = ["tests"]
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
+filterwarnings = [
+    "ignore:Accessing argon2.__version__ is deprecated:DeprecationWarning"
+]
 
 # ============================
 # Tests (Coverage)

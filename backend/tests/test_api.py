@@ -8,6 +8,7 @@ from httpx import AsyncClient
 from jose import ExpiredSignatureError, JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.dependencies import get_db
 from app.exc import InvalidCredentialsError, InvalidTokenError
 from app.models import User, UserToken
 from app.models.user import UserStatus
@@ -484,3 +485,103 @@ class TestDbValidateRefreshToken:
             pytest.raises(InvalidTokenError),
         ):
             await db_validate_refresh_token("tok", db)
+
+
+# =============================
+# GET /health
+# =============================
+
+
+async def test_health_success(client: AsyncClient) -> None:
+    response = await client.get("/health")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json() == {"status": "ok"}
+
+
+# =============================
+# get_db rollback on error
+# =============================
+
+
+async def test_get_db_rollback_on_error() -> None:
+    mock_session = AsyncMock(spec=AsyncSession)
+    mock_session.rollback = AsyncMock()
+
+    with patch("app.core.dependencies.AsyncSessionLocal") as mock_factory:
+        mock_factory.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_factory.return_value.__aexit__ = AsyncMock(return_value=None)
+
+        gen = get_db()
+        await gen.__anext__()
+
+        with pytest.raises(RuntimeError):
+            await gen.athrow(RuntimeError("db error"))
+
+        mock_session.rollback.assert_awaited_once()
+
+
+# =============================
+# get_current_user exceptions
+# =============================
+
+
+class TestGetCurrentUserExceptions:
+    async def test_expired_token(self, client: AsyncClient) -> None:
+        with patch(
+            "app.core.dependencies.decode_token",
+            side_effect=ExpiredSignatureError(),
+        ):
+            response = await client.get(
+                "/users/me",
+                headers={"Authorization": "Bearer expired"},
+            )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert "expirado" in response.json()["detail"]
+
+    async def test_wrong_token_type(self, client: AsyncClient) -> None:
+        with patch(
+            "app.core.dependencies.decode_token",
+            return_value={"type": "refresh", "sub": str(uuid.uuid4())},
+        ):
+            response = await client.get(
+                "/users/me",
+                headers={"Authorization": "Bearer token_tipo_errado"},
+            )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert "Token inválido para esta operação" in response.json()["detail"]
+
+    async def test_missing_sub(self, client: AsyncClient) -> None:
+        with patch(
+            "app.core.dependencies.decode_token",
+            return_value={"type": "access"},
+        ):
+            response = await client.get(
+                "/users/me",
+                headers={"Authorization": "Bearer sem_sub"},
+            )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert "Token inválido" in response.json()["detail"]
+
+    async def test_user_not_found(self, client: AsyncClient) -> None:
+        some_uuid = uuid.uuid4()
+        with (
+            patch(
+                "app.core.dependencies.decode_token",
+                return_value={"type": "access", "sub": str(some_uuid)},
+            ),
+            patch(
+                "app.core.dependencies.UserDBService.get_user_by_uuid",
+                AsyncMock(return_value=None),
+            ),
+        ):
+            response = await client.get(
+                "/users/me",
+                headers={"Authorization": "Bearer token_sem_usuario"},
+            )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert "não encontrado" in response.json()["detail"]

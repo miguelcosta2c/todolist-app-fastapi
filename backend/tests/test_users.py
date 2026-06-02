@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from typing import Any
 
 import pytest
@@ -6,6 +7,8 @@ from fastapi import status
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.settings import TIMEZONE
+from app.models.user import UserStatus
 from app.schemas import UserCreate, UserListFilters
 from app.services.user import UserDBService
 
@@ -319,5 +322,129 @@ async def test_get_user_by_uuid(session: AsyncSession) -> None:
     assert user is not None
 
     found = await UserDBService(session).get_user_by_uuid(user.uuid_)
+    assert found is not None
+    assert found.uuid_ == user.uuid_
+
+
+# =============================
+# get_all_users filter branches
+# =============================
+
+
+async def test_get_all_users_filter_by_username(
+    session: AsyncSession,
+) -> None:
+    await create_user(session, username="joao", email="joao@test.com")
+    await create_user(session, username="jose", email="jose@test.com")
+    await create_user(session, username="maria", email="maria@test.com")
+
+    filters = UserListFilters(offset=0, limit=10, username="joa")
+    users = await UserDBService(session).get_all_users(filters)
+    assert len(users) == 1
+    assert users[0].username == "joao"
+
+
+async def test_get_all_users_filter_by_email(
+    session: AsyncSession,
+) -> None:
+    await create_user(session, email="joao@test.com")
+    await create_user(
+        session, username="jose", email="jose@outro.com"
+    )
+
+    filters = UserListFilters(offset=0, limit=10, email="test")
+    users = await UserDBService(session).get_all_users(filters)
+    assert len(users) == 1
+    assert users[0].email == "joao@test.com"
+
+
+async def test_get_all_users_filter_by_status(
+    session: AsyncSession,
+) -> None:
+    await create_user(session)
+    user = await UserDBService(session).get_user_by(email=USER_DATA["email"])
+    assert user is not None
+    await UserDBService(session).delete_user(user)
+
+    await create_user(session, username="outro", email="outro@email.com")
+
+    filters = UserListFilters(
+        offset=0, limit=10, status=UserStatus.DELETED, include_deleted=True
+    )
+    users = await UserDBService(session).get_all_users(filters)
+    assert len(users) == 1
+    assert users[0].status == UserStatus.DELETED
+
+
+async def test_get_all_users_filter_by_is_superuser(
+    session: AsyncSession,
+) -> None:
+    await create_user(session)
+    data = {**USER_DATA, "username": "admin", "email": "admin@test.com"}
+    await UserDBService(session).create_user(
+        UserCreate(**data), is_superuser=True
+    )
+
+    filters = UserListFilters(offset=0, limit=10, is_superuser=True)
+    users = await UserDBService(session).get_all_users(filters)
+    assert len(users) == 1
+    assert users[0].is_superuser is True
+
+
+async def test_get_all_users_filter_by_created_after(
+    session: AsyncSession,
+) -> None:
+    await create_user(session)
+    filters = UserListFilters(
+        offset=0,
+        limit=10,
+        created_after=datetime.now(TIMEZONE),
+    )
+    users = await UserDBService(session).get_all_users(filters)
+    assert len(users) == 0
+
+
+async def test_get_all_users_filter_by_created_before(
+    session: AsyncSession,
+) -> None:
+    await create_user(session)
+    filters = UserListFilters(
+        offset=0,
+        limit=10,
+        created_before=datetime.now(TIMEZONE),
+    )
+    users = await UserDBService(session).get_all_users(filters)
+    assert len(users) == 1
+
+
+async def test_get_all_users_include_deleted(
+    session: AsyncSession,
+) -> None:
+    await create_user(session)
+    user = await UserDBService(session).get_user_by(email=USER_DATA["email"])
+    assert user is not None
+    await UserDBService(session).delete_user(user)
+
+    filters = UserListFilters(offset=0, limit=10, include_deleted=True)
+    users = await UserDBService(session).get_all_users(filters)
+    assert len(users) == 1
+
+
+async def test_get_user_by_uuid_only_active_false(
+    session: AsyncSession,
+) -> None:
+    await create_user(session)
+    user = await UserDBService(session).get_user_by(email=USER_DATA["email"])
+    assert user is not None
+    await UserDBService(session).delete_user(user)
+
+    # only_active=True (default) should NOT find deleted user
+    found = await UserDBService(session).get_user_by_uuid(user.uuid_)
+    assert found is None
+
+    # only_active=False should find deleted user
+    found = await UserDBService(session).get_user_by_uuid(
+        user.uuid_, only_active=False
+    )
     assert found is not None
     assert found.uuid_ == user.uuid_

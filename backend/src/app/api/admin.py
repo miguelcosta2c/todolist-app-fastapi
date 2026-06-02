@@ -38,13 +38,13 @@ async def get_user(db: SessionDB, user_uuid: uuid.UUID) -> Any:
     return await api.get_user_by_uuid(db, user_uuid)
 
 
-@router.patch("/users/{user_uuid}")
+@router.patch("/users/{user_uuid}", response_model=UserSchema)
 async def patch_user(
     db: SessionDB,
     user_uuid: uuid.UUID,
     data: UserUpdate,
 ) -> Any:
-    return await api.patch_user_by_uuid(db, user_uuid)
+    return await api.patch_user_by_uuid(db, user_uuid, data)
 
 
 @router.delete("/users/{user_uuid}", status_code=status.HTTP_204_NO_CONTENT)

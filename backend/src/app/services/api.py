@@ -171,13 +171,14 @@ async def patch_user_by_uuid(
     db: AsyncSession, user_uuid: uuid.UUID, data: UserUpdate
 ) -> User:
     user_service = UserDBService(db)
-    user = _get_user_by_uuid(user_service, user_uuid)
-    return await user_service.update_user(user, data)
+    user = await _get_user_by_uuid(user_service, user_uuid)
+    update_data = data.model_dump(exclude_unset=True, exclude_none=True)
+    return await user_service.update_user(user, update_data)
 
 
 async def delete_user_by_uuid(db: AsyncSession, user_uuid: uuid.UUID) -> None:
     user_service = UserDBService(db)
-    user = _get_user_by_uuid(user_service, user_uuid)
+    user = await _get_user_by_uuid(user_service, user_uuid)
     await user_service.delete_user(user)
 
 
@@ -226,10 +227,10 @@ async def list_all_refresh_tokens(
 
 
 async def delete_token_by_id(db: AsyncSession, token_id: int) -> None:
-    db_token = token.get_token_by_id(db, token_id)
+    db_token = await token.get_token_by_id(db, token_id)
     if db_token is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Token nnao encontrado"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Token nao encontrado"
         )
     await token.delete_token_by_id(db, token_id)
     await db.commit()
