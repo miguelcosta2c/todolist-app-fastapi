@@ -3,6 +3,8 @@ from typing import Literal
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel
 from rich.logging import RichHandler
 from slowapi import _rate_limit_exceeded_handler
@@ -25,7 +27,11 @@ logger = logging.getLogger("app")
 
 # App
 
-app = FastAPI()
+app = FastAPI(
+    title="TODO LIST APP",
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
+)
 
 # Rate limiting
 
@@ -41,6 +47,12 @@ app.add_middleware(
     allow_methods=["*"],  # Permite todos os métodos (GET, POST, PUT, DELETE, etc.)
     allow_headers=["*"],  # Permite todos os headers
 )
+
+# Other Middlewares
+
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.TRUSTED_HOSTS)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 
 # Health check
 

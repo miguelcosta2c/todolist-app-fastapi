@@ -28,6 +28,7 @@ class _Settings(BaseSettings):
     RATE_LIMIT_ADMIN: str = Field(default="100000/minute", init=False)
     RATE_LIMIT_GLOBAL: str = Field(default="1000000/minute", init=False)
     ALLOWED_ORIGINS: list[str] = Field(init=False)
+    TRUSTED_HOSTS: list[str] = Field(init=False)
 
     @property
     def DEBUG(self) -> bool:  # noqa: N802
