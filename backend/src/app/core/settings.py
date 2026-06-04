@@ -19,7 +19,15 @@ class _Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(init=False)
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(init=False)
     ENVIRONMENT: Literal["development", "production"] = Field(init=False)
-    LOG_LEVEL: str = Field(default="INFO", init=False)
+    LOG_LEVEL: Literal["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = (
+        Field(default="INFO", init=False)
+    )
+    RATE_LIMIT_AUTH: str = Field(default="100000/minute", init=False)
+    RATE_LIMIT_USER: str = Field(default="100000/minute", init=False)
+    RATE_LIMIT_TODO: str = Field(default="100000/minute", init=False)
+    RATE_LIMIT_ADMIN: str = Field(default="100000/minute", init=False)
+    RATE_LIMIT_GLOBAL: str = Field(default="1000000/minute", init=False)
+    ALLOWED_ORIGINS: list[str] = Field(init=False)
 
     @property
     def DEBUG(self) -> bool:  # noqa: N802

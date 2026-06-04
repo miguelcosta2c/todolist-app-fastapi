@@ -20,15 +20,8 @@ dependencies = [
   "rich>=15.0.0",
   "asyncpg>=0.31.0",
   "psycopg2-binary>=2.9.12",
+  "slowapi>=0.1.9",
 ]
-
-[project.urls]
-# Homepage = "https://homepage.example.com"
-# Documentation = "https://example.org"
-# Repository = "https://github.com/me/spam.git"
-# Issues = "https://github.com/me/spam/issues"
-# Changelog = "https://github.com/me/spam/blob/master/CHANGELOG.md"
-
 # ============================
 # Project dependency groups
 # ============================
@@ -45,11 +38,11 @@ dev = [
     "httpx>=0.28.1",
     "testcontainers[postgres]>=4.14.2",
 ]
-
-[project.scripts]
-create_superuser = "app.scripts:create_superuser"
-server = "app.scripts:server"
-
+# ============================
+# Uv configuration
+# ============================
+[tool.uv]
+exclude-newer = "7 days"
 # ============================
 # Lint and formatting (Ruff)
 # ============================
@@ -118,7 +111,6 @@ asyncio_default_test_loop_scope = "session"
 filterwarnings = [
     "ignore:Accessing argon2.__version__ is deprecated:DeprecationWarning"
 ]
-
 # ============================
 # Tests (Coverage)
 # ============================
@@ -128,7 +120,7 @@ branch = true
 concurrency = ["greenlet", "thread"]
 
 [tool.coverage.report]
-omit = ["*/tests/*", "**/__init__.py", "*/utils/*", "**/scripts.py"]
+omit = ["*/tests/*", "**/__init__.py", "*/utils/*", "**/scripts.py", "**/limiter.py"]
 show_missing = true
 fail_under=70
 # ============================
