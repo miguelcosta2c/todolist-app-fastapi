@@ -345,9 +345,7 @@ async def test_get_all_users_filter_by_email(
     session: AsyncSession,
 ) -> None:
     await create_user(session, email="joao@test.com")
-    await create_user(
-        session, username="jose", email="jose@outro.com"
-    )
+    await create_user(session, username="jose", email="jose@outro.com")
 
     filters = UserListFilters(offset=0, limit=10, email="test")
     users = await UserDBService(session).get_all_users(filters)
@@ -378,9 +376,7 @@ async def test_get_all_users_filter_by_is_superuser(
 ) -> None:
     await create_user(session)
     data = {**USER_DATA, "username": "admin", "email": "admin@test.com"}
-    await UserDBService(session).create_user(
-        UserCreate(**data), is_superuser=True
-    )
+    await UserDBService(session).create_user(UserCreate(**data), is_superuser=True)
 
     filters = UserListFilters(offset=0, limit=10, is_superuser=True)
     users = await UserDBService(session).get_all_users(filters)
@@ -440,9 +436,7 @@ async def test_get_user_by_uuid_only_active_false(
     assert found is None
 
     # only_active=False should find deleted user
-    found = await UserDBService(session).get_user_by_uuid(
-        user.uuid_, only_active=False
-    )
+    found = await UserDBService(session).get_user_by_uuid(user.uuid_, only_active=False)
     assert found is not None
     assert found.uuid_ == user.uuid_
 
@@ -453,13 +447,14 @@ async def test_get_user_by_uuid_only_active_false(
 
 
 async def test_count_users_default(session: AsyncSession) -> None:
+    count = 2
     await create_user(session)
     await create_user(session, username="outro", email="outro@email.com")
 
     total = await UserDBService(session).count_users(
         UserListFilters(offset=0, limit=10)
     )
-    assert total == 2
+    assert total == count
 
 
 async def test_count_users_include_deleted(session: AsyncSession) -> None:
@@ -532,7 +527,9 @@ async def test_count_users_filter_by_created_after(session: AsyncSession) -> Non
 
     total = await UserDBService(session).count_users(
         UserListFilters(
-            offset=0, limit=10, created_after=datetime.now(TIMEZONE),
+            offset=0,
+            limit=10,
+            created_after=datetime.now(TIMEZONE),
         )
     )
     assert total == 0
@@ -543,7 +540,9 @@ async def test_count_users_filter_by_created_before(session: AsyncSession) -> No
 
     total = await UserDBService(session).count_users(
         UserListFilters(
-            offset=0, limit=10, created_before=datetime.now(TIMEZONE),
+            offset=0,
+            limit=10,
+            created_before=datetime.now(TIMEZONE),
         )
     )
     assert total == 1

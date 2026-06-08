@@ -30,7 +30,7 @@ ADMIN_DATA = {
 
 
 async def _create_user(
-    session: AsyncSession, data: dict[str, Any], is_superuser: bool = False
+    session: AsyncSession, data: dict[str, Any], *, is_superuser: bool = False
 ) -> None:
     await UserDBService(session).create_user(
         UserCreate(**data), is_superuser=is_superuser
@@ -130,9 +130,7 @@ async def test_delete_user_by_uuid_success(
 # =============================
 
 
-async def test_list_tokens_success(
-    client: AsyncClient, session: AsyncSession
-) -> None:
+async def test_list_tokens_success(client: AsyncClient, session: AsyncSession) -> None:
     await _create_user(session, ADMIN_DATA, is_superuser=True)
     await _create_user(session, USER_DATA)
     admin_token = await _login(client, ADMIN_DATA["email"], ADMIN_DATA["password"])
@@ -156,9 +154,7 @@ async def test_list_tokens_success(
 # =============================
 
 
-async def test_revoke_token_success(
-    client: AsyncClient, session: AsyncSession
-) -> None:
+async def test_revoke_token_success(client: AsyncClient, session: AsyncSession) -> None:
     await _create_user(session, ADMIN_DATA, is_superuser=True)
     await _create_user(session, USER_DATA)
     admin_token = await _login(client, ADMIN_DATA["email"], ADMIN_DATA["password"])
@@ -201,9 +197,7 @@ async def test_revoke_token_not_found(
 # =============================
 
 
-async def test_delete_token_success(
-    client: AsyncClient, session: AsyncSession
-) -> None:
+async def test_delete_token_success(client: AsyncClient, session: AsyncSession) -> None:
     await _create_user(session, ADMIN_DATA, is_superuser=True)
     await _create_user(session, USER_DATA)
     admin_token = await _login(client, ADMIN_DATA["email"], ADMIN_DATA["password"])
@@ -296,12 +290,8 @@ async def test_admin_list_todos_filter_by_status(
     todo = await TodoDBService(session).create_todo(
         TodoCreate(name="Em progresso"), user.uuid_
     )
-    await TodoDBService(session).create_todo(
-        TodoCreate(name="Concluida"), user.uuid_
-    )
-    await TodoDBService(session).update_todo(
-        todo, {"status": TodoStatus.IN_PROGRESS}
-    )
+    await TodoDBService(session).create_todo(TodoCreate(name="Concluida"), user.uuid_)
+    await TodoDBService(session).update_todo(todo, {"status": TodoStatus.IN_PROGRESS})
 
     response = await client.get(
         "/admin/todos",
@@ -326,9 +316,7 @@ async def test_admin_list_todos_filter_by_priority(
     await TodoDBService(session).create_todo(
         TodoCreate(name="Importante", priority=TodoPriority.HIGH), user.uuid_
     )
-    await TodoDBService(session).create_todo(
-        TodoCreate(name="Normal"), user.uuid_
-    )
+    await TodoDBService(session).create_todo(TodoCreate(name="Normal"), user.uuid_)
 
     response = await client.get(
         "/admin/todos",
@@ -350,9 +338,7 @@ async def test_admin_list_todos_filter_by_created_after(
     token = await _login(client, ADMIN_DATA["email"], ADMIN_DATA["password"])
 
     user = await UserDBService(session).get_user_by(email=USER_DATA["email"])
-    await TodoDBService(session).create_todo(
-        TodoCreate(name="Antiga"), user.uuid_
-    )
+    await TodoDBService(session).create_todo(TodoCreate(name="Antiga"), user.uuid_)
 
     response = await client.get(
         "/admin/todos",
@@ -373,9 +359,7 @@ async def test_admin_list_todos_filter_by_search(
     token = await _login(client, ADMIN_DATA["email"], ADMIN_DATA["password"])
 
     user = await UserDBService(session).get_user_by(email=USER_DATA["email"])
-    await TodoDBService(session).create_todo(
-        TodoCreate(name="Comprar pao"), user.uuid_
-    )
+    await TodoDBService(session).create_todo(TodoCreate(name="Comprar pao"), user.uuid_)
     await TodoDBService(session).create_todo(
         TodoCreate(name="Estudar Python"), user.uuid_
     )
@@ -398,14 +382,20 @@ async def test_admin_list_todos_filter_by_user_uuid(
     await _create_user(session, ADMIN_DATA, is_superuser=True)
     await _create_user(session, USER_DATA)
     await _create_user(
-        session, {"username": "outro", "email": "outro@email.com",
-                   "password": "User123@", "confirm_password": "User123@"}
+        session,
+        {
+            "username": "outro",
+            "email": "outro@email.com",
+            "password": "User123@",
+            "confirm_password": "User123@",
+        },
     )
     token = await _login(client, ADMIN_DATA["email"], ADMIN_DATA["password"])
 
     user1 = await UserDBService(session).get_user_by(email=USER_DATA["email"])
     user2 = await UserDBService(session).get_user_by(email="outro@email.com")
-    assert user1 is not None and user2 is not None
+    assert user1 is not None
+    assert user2 is not None
     await TodoDBService(session).create_todo(
         TodoCreate(name="Todo do user1"), user1.uuid_
     )
@@ -433,9 +423,7 @@ async def test_admin_list_todos_filter_by_created_before(
     token = await _login(client, ADMIN_DATA["email"], ADMIN_DATA["password"])
 
     user = await UserDBService(session).get_user_by(email=USER_DATA["email"])
-    await TodoDBService(session).create_todo(
-        TodoCreate(name="Futura"), user.uuid_
-    )
+    await TodoDBService(session).create_todo(TodoCreate(name="Futura"), user.uuid_)
 
     response = await client.get(
         "/admin/todos",

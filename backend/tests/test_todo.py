@@ -1,12 +1,10 @@
 import uuid
-from datetime import datetime
 from typing import Any
 
 from fastapi import status
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.settings import TIMEZONE
 from app.models.todo import TodoPriority, TodoStatus
 from app.schemas import TodoCreate, TodoListFilters, UserCreate
 from app.services.todo import TodoDBService
@@ -42,9 +40,7 @@ async def get_access_token(client: AsyncClient, email: str, password: str) -> st
 # =============================
 
 
-async def test_list_todos_empty(
-    client: AsyncClient, session: AsyncSession
-) -> None:
+async def test_list_todos_empty(client: AsyncClient, session: AsyncSession) -> None:
     await create_user(session)
     token = await get_access_token(client, USER_DATA["email"], USER_DATA["password"])
 
@@ -92,14 +88,14 @@ async def test_list_todos_filter_by_status(
     assert user is not None
 
     todo1 = await TodoDBService(session).create_todo(
-        TodoCreate(name="Tarefa em progresso"), user.uuid_,
+        TodoCreate(name="Tarefa em progresso"),
+        user.uuid_,
     )
     await TodoDBService(session).create_todo(
-        TodoCreate(name="Tarefa concluida"), user.uuid_,
+        TodoCreate(name="Tarefa concluida"),
+        user.uuid_,
     )
-    await TodoDBService(session).update_todo(
-        todo1, {"status": TodoStatus.IN_PROGRESS}
-    )
+    await TodoDBService(session).update_todo(todo1, {"status": TodoStatus.IN_PROGRESS})
 
     response = await client.get(
         "/todos/",
@@ -193,9 +189,7 @@ async def test_list_todos_filter_by_created_before(
 # =============================
 
 
-async def test_create_todo_success(
-    client: AsyncClient, session: AsyncSession
-) -> None:
+async def test_create_todo_success(client: AsyncClient, session: AsyncSession) -> None:
     await create_user(session)
     token = await get_access_token(client, USER_DATA["email"], USER_DATA["password"])
 
@@ -228,9 +222,7 @@ async def test_create_todo_unauthorized(client: AsyncClient) -> None:
 # =============================
 
 
-async def test_get_todo_success(
-    client: AsyncClient, session: AsyncSession
-) -> None:
+async def test_get_todo_success(client: AsyncClient, session: AsyncSession) -> None:
     await create_user(session)
     token = await get_access_token(client, USER_DATA["email"], USER_DATA["password"])
     user = await UserDBService(session).get_user_by(email=USER_DATA["email"])
@@ -249,9 +241,7 @@ async def test_get_todo_success(
     assert response.json()["name"] == "Tarefa especifica"
 
 
-async def test_get_todo_not_found(
-    client: AsyncClient, session: AsyncSession
-) -> None:
+async def test_get_todo_not_found(client: AsyncClient, session: AsyncSession) -> None:
     await create_user(session)
     token = await get_access_token(client, USER_DATA["email"], USER_DATA["password"])
 
@@ -268,9 +258,7 @@ async def test_get_todo_not_found(
 # =============================
 
 
-async def test_patch_todo_success(
-    client: AsyncClient, session: AsyncSession
-) -> None:
+async def test_patch_todo_success(client: AsyncClient, session: AsyncSession) -> None:
     await create_user(session)
     token = await get_access_token(client, USER_DATA["email"], USER_DATA["password"])
     user = await UserDBService(session).get_user_by(email=USER_DATA["email"])
@@ -311,9 +299,7 @@ async def test_patch_todo_no_changes(
     assert response.status_code == status.HTTP_200_OK
 
 
-async def test_patch_todo_not_found(
-    client: AsyncClient, session: AsyncSession
-) -> None:
+async def test_patch_todo_not_found(client: AsyncClient, session: AsyncSession) -> None:
     await create_user(session)
     token = await get_access_token(client, USER_DATA["email"], USER_DATA["password"])
 
@@ -331,9 +317,7 @@ async def test_patch_todo_not_found(
 # =============================
 
 
-async def test_delete_todo_success(
-    client: AsyncClient, session: AsyncSession
-) -> None:
+async def test_delete_todo_success(client: AsyncClient, session: AsyncSession) -> None:
     await create_user(session)
     token = await get_access_token(client, USER_DATA["email"], USER_DATA["password"])
     user = await UserDBService(session).get_user_by(email=USER_DATA["email"])
@@ -389,11 +373,11 @@ async def test_count_todos_filter_by_search(session: AsyncSession) -> None:
     user = await UserDBService(session).get_user_by(email=USER_DATA["email"])
     assert user is not None
     await TodoDBService(session).create_todo(TodoCreate(name="Comprar pao"), user.uuid_)
-    await TodoDBService(session).create_todo(TodoCreate(name="Estudar Python"), user.uuid_)
-
-    total = await TodoDBService(session).count_todos(
-        TodoListFilters(search="pao")
+    await TodoDBService(session).create_todo(
+        TodoCreate(name="Estudar Python"), user.uuid_
     )
+
+    total = await TodoDBService(session).count_todos(TodoListFilters(search="pao"))
     assert total == 1
 
 
@@ -402,7 +386,8 @@ async def test_count_todos_filter_by_user_uuid(session: AsyncSession) -> None:
     await create_user(session, username="outro", email="outro@email.com")
     user1 = await UserDBService(session).get_user_by(email=USER_DATA["email"])
     user2 = await UserDBService(session).get_user_by(email="outro@email.com")
-    assert user1 is not None and user2 is not None
+    assert user1 is not None
+    assert user2 is not None
     await TodoDBService(session).create_todo(TodoCreate(name="Tarefa 1"), user1.uuid_)
     await TodoDBService(session).create_todo(TodoCreate(name="Tarefa 2"), user2.uuid_)
 
@@ -422,11 +407,11 @@ async def test_get_all_todos_filter_by_search(session: AsyncSession) -> None:
     user = await UserDBService(session).get_user_by(email=USER_DATA["email"])
     assert user is not None
     await TodoDBService(session).create_todo(TodoCreate(name="Comprar pao"), user.uuid_)
-    await TodoDBService(session).create_todo(TodoCreate(name="Estudar Python"), user.uuid_)
-
-    todos = await TodoDBService(session).get_all_todos(
-        TodoListFilters(search="pao")
+    await TodoDBService(session).create_todo(
+        TodoCreate(name="Estudar Python"), user.uuid_
     )
+
+    todos = await TodoDBService(session).get_all_todos(TodoListFilters(search="pao"))
     assert len(todos) == 1
 
 
@@ -435,7 +420,8 @@ async def test_get_all_todos_filter_by_user_uuid(session: AsyncSession) -> None:
     await create_user(session, username="outro", email="outro@email.com")
     user1 = await UserDBService(session).get_user_by(email=USER_DATA["email"])
     user2 = await UserDBService(session).get_user_by(email="outro@email.com")
-    assert user1 is not None and user2 is not None
+    assert user1 is not None
+    assert user2 is not None
     await TodoDBService(session).create_todo(TodoCreate(name="Tarefa 1"), user1.uuid_)
     await TodoDBService(session).create_todo(TodoCreate(name="Tarefa 2"), user2.uuid_)
 

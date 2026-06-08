@@ -67,6 +67,7 @@ ignore = [
   "INP001", # Checks for packages that are missing an __init__.py file.
   "S101",   # Checks for uses of the assert keyword.
   "T201",   # Checks for print statements,
+  "S106"
 ]
 
 [tool.ruff.lint.per-file-ignores]

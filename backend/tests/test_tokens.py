@@ -191,13 +191,14 @@ class TestListAllUserTokens:
 
 class TestCountAllUserTokens:
     async def test_no_filters(self) -> None:
+        count = 5
         db: AsyncMock = AsyncMock()
         db.scalar.return_value = 5
         filters: RefreshTokensListFilter = make_filters()
 
         total = await count_all_user_tokens(db, filters)
 
-        assert total == 5
+        assert total == count
 
     async def test_filter_by_id(self) -> None:
         db: AsyncMock = AsyncMock()
@@ -209,24 +210,27 @@ class TestCountAllUserTokens:
         assert total == 1
 
     async def test_filter_by_user_uuid(self) -> None:
+        count = 2
         db: AsyncMock = AsyncMock()
         db.scalar.return_value = 2
         filters: RefreshTokensListFilter = make_filters(user_uuid=uuid4())
 
         total = await count_all_user_tokens(db, filters)
 
-        assert total == 2
+        assert total == count
 
     async def test_filter_is_revoked(self) -> None:
+        count = 2
         db: AsyncMock = AsyncMock()
         db.scalar.return_value = 0
         filters: RefreshTokensListFilter = make_filters(is_revoked=True)
 
         total = await count_all_user_tokens(db, filters)
 
-        assert total == 0
+        assert total == count
 
     async def test_filter_expires_after(self) -> None:
+        count = 3
         db: AsyncMock = AsyncMock()
         db.scalar.return_value = 3
         filters: RefreshTokensListFilter = make_filters(
@@ -235,7 +239,7 @@ class TestCountAllUserTokens:
 
         total = await count_all_user_tokens(db, filters)
 
-        assert total == 3
+        assert total == count
 
     async def test_filter_expires_before(self) -> None:
         db: AsyncMock = AsyncMock()
@@ -249,6 +253,7 @@ class TestCountAllUserTokens:
         assert total == 1
 
     async def test_filter_created_after(self) -> None:
+        count = 2
         db: AsyncMock = AsyncMock()
         db.scalar.return_value = 2
         filters: RefreshTokensListFilter = make_filters(
@@ -257,7 +262,7 @@ class TestCountAllUserTokens:
 
         total = await count_all_user_tokens(db, filters)
 
-        assert total == 2
+        assert total == count
 
     async def test_filter_created_before(self) -> None:
         db: AsyncMock = AsyncMock()
