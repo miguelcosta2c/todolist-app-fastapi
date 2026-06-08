@@ -13,9 +13,11 @@ from app.core.dependencies import (
 from app.core.limiter import limiter
 from app.core.settings import settings
 from app.schemas import (
+    AdminTodoList,
+    AdminTodoSchema,
     RefreshTokensList,
-    TodoList,
     TodoResponse,
+    TodoUpdate,
     UserList,
     UserSchema,
     UserUpdate,
@@ -78,6 +80,15 @@ async def list_tokens(
     return await api.list_all_refresh_tokens(db, filters)
 
 
+@router.patch("/tokens/{token_id}/revoke", status_code=status.HTTP_200_OK)
+@limiter.limit(settings.RATE_LIMIT_ADMIN)
+async def revoke_token(
+    request: Request, db: SessionDB, token_id: int
+) -> dict[str, str]:
+    await api.revoke_token_by_id(db, token_id)
+    return {"message": "Token revogado com sucesso."}
+
+
 @router.delete("/tokens/{token_id}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit(settings.RATE_LIMIT_ADMIN)
 async def delete_token(
@@ -91,7 +102,7 @@ async def delete_token(
 # ==============================================
 
 
-@router.get("/todos", response_model=TodoList)
+@router.get("/todos", response_model=AdminTodoList)
 @limiter.limit(settings.RATE_LIMIT_ADMIN)
 async def list_todos(
     request: Request, db: SessionDB, filters: TodosFilter
@@ -105,6 +116,17 @@ async def get_todo(
     request: Request, db: SessionDB, todo_uuid: uuid.UUID
 ) -> Any:
     return await api.admin_get_todo_by_uuid(db, todo_uuid)
+
+
+@router.patch("/todos/{todo_uuid}", response_model=AdminTodoSchema)
+@limiter.limit(settings.RATE_LIMIT_ADMIN)
+async def patch_todo(
+    request: Request,
+    db: SessionDB,
+    todo_uuid: uuid.UUID,
+    data: TodoUpdate,
+) -> Any:
+    return await api.admin_patch_todo_by_uuid(db, todo_uuid, data)
 
 
 @router.delete("/todos/{todo_uuid}", status_code=status.HTTP_204_NO_CONTENT)

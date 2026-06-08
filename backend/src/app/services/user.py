@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Literal
 
-from sqlalchemy import desc, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,6 +36,33 @@ class UserDBService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+
+    async def count_users(self, filters: UserListFilters) -> int:
+        stmt = select(func.count(User.id))
+
+        if not filters.include_deleted:
+            stmt = stmt.where(User.deleted_at.is_(None))
+
+        if filters.username:
+            stmt = stmt.where(User.username.ilike(f"%{filters.username}%"))
+
+        if filters.email:
+            stmt = stmt.where(User.email.ilike(f"%{filters.email}%"))
+
+        if filters.status:
+            stmt = stmt.where(User.status == filters.status)
+
+        if filters.is_superuser is not None:
+            stmt = stmt.where(User.is_superuser == filters.is_superuser)
+
+        if filters.created_after:
+            stmt = stmt.where(User.created_at >= filters.created_after)
+
+        if filters.created_before:
+            stmt = stmt.where(User.created_at <= filters.created_before)
+
+        total = await self.session.scalar(stmt)
+        return total or 0
 
     async def get_all_users(self, filters: UserListFilters) -> Sequence[User]:
         """

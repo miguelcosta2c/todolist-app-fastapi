@@ -45,3 +45,6 @@ docker-compose.prod.yaml
 # Extra
 postgres-db-url.txt
 sql/
+
+# IDE
+.vscode/

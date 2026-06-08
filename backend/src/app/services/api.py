@@ -12,6 +12,7 @@ from app.core.settings import TIMEZONE, settings
 from app.exc import InvalidCredentialsError, InvalidTokenError, UserAlreadyExistsError
 from app.models import Todo, User, UserToken
 from app.schemas import (
+    AdminTodoSchema,
     RefreshTokensListFilter,
     TodoCreate,
     TodoListFilters,
@@ -152,9 +153,9 @@ async def logout_user(
 
 
 async def list_all_users(db: AsyncSession, filters: UserListFilters) -> dict[str, Any]:
-    users = await UserDBService(db).get_all_users(filters)
-    total = await db.scalar(select(func.count(User.id)))
-    total = 0 if total is None else total
+    user_service = UserDBService(db)
+    users = await user_service.get_all_users(filters)
+    total = await user_service.count_users(filters)
     return {
         "result": users,
         "total": total,
@@ -185,7 +186,7 @@ async def patch_user_by_uuid(
 ) -> User:
     user_service = UserDBService(db)
     user = await _get_user_by_uuid(user_service, user_uuid)
-    update_data = data.model_dump(exclude_unset=True, exclude_none=True)
+    update_data = data.model_dump(exclude_unset=True)
     updated_user = await user_service.update_user(user, update_data)
     logger.info("Administrador atualizou o usuário: %s", user_uuid)
     return updated_user
@@ -199,10 +200,7 @@ async def delete_user_by_uuid(db: AsyncSession, user_uuid: uuid.UUID) -> None:
 
 
 async def patch_current_user(db: AsyncSession, user: User, data: UserUpdate) -> User:
-    update_data = data.model_dump(
-        exclude_unset=True,
-        exclude_none=True,
-    )
+    update_data = data.model_dump(exclude_unset=True)
 
     if not verify_password(update_data.pop("password"), user.password_hash):
         logger.warning(
@@ -243,14 +241,26 @@ async def list_all_refresh_tokens(
     db: AsyncSession, filters: RefreshTokensListFilter
 ) -> dict[str, Any]:
     tokens = await token.list_all_user_tokens(db, filters)
-    total = await db.scalar(select(func.count(UserToken.id)))
-    total = 0 if total is None else total
+    total = await token.count_all_user_tokens(db, filters)
     return {
         "result": tokens,
         "total": total,
         "offset": filters.offset,
         "limit": filters.limit,
     }
+
+
+async def revoke_token_by_id(db: AsyncSession, token_id: int) -> None:
+    db_token = await token.get_token_by_id(db, token_id)
+    if db_token is None:
+        logger.warning("Token não encontrado para revogação: %s", token_id)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="O token solicitado não foi encontrado.",
+        )
+    db_token.is_revoked = True
+    await db.commit()
+    logger.info("Administrador revogou o token: %s", token_id)
 
 
 async def delete_token_by_id(db: AsyncSession, token_id: int) -> None:
@@ -323,7 +333,7 @@ async def patch_user_todo(
     data: TodoUpdate,
 ) -> Todo:
     todo = await _get_user_todo(db, user_uuid, todo_uuid)
-    update_data = data.model_dump(exclude_unset=True, exclude_none=True)
+    update_data = data.model_dump(exclude_unset=True)
     updated_todo = await TodoDBService(db).update_todo(todo, update_data)
     logger.info("Tarefa atualizada pelo usuário %s: %s", user_uuid, todo_uuid)
     return updated_todo
@@ -343,11 +353,38 @@ async def delete_user_todo(
 
 
 async def list_all_todos(db: AsyncSession, filters: TodoListFilters) -> dict[str, Any]:
-    todos = await TodoDBService(db).get_all_todos(filters)
-    total = await db.scalar(select(func.count(Todo.id)))
-    total = 0 if total is None else total
+    todo_service = TodoDBService(db)
+    todos = await todo_service.get_all_todos(filters)
+    total = await todo_service.count_todos(filters)
+
+    user_uuids = {t.user_uuid for t in todos if t.user_uuid}
+    users_map: dict[uuid.UUID, str] = {}
+    if user_uuids:
+        rows = await db.execute(
+            select(User.uuid_, User.username).where(User.uuid_.in_(user_uuids))
+        )
+        for row in rows:
+            users_map[row.uuid_] = row.username
+
+    result_list: list[AdminTodoSchema] = []
+    for todo in todos:
+        todo_dict = {
+            "id": todo.id,
+            "uuid_": todo.uuid_,
+            "name": todo.name,
+            "description": todo.description,
+            "status": todo.status,
+            "priority": todo.priority,
+            "due_date": todo.due_date,
+            "user_uuid": todo.user_uuid,
+            "created_at": todo.created_at,
+            "updated_at": todo.updated_at,
+            "username": users_map.get(todo.user_uuid),
+        }
+        result_list.append(AdminTodoSchema.model_validate(todo_dict))
+
     return {
-        "result": todos,
+        "result": result_list,
         "total": total,
         "offset": filters.offset,
         "limit": filters.limit,
@@ -367,6 +404,16 @@ async def _get_todo_by_uuid_admin(db: AsyncSession, todo_uuid: uuid.UUID) -> Tod
 
 async def admin_get_todo_by_uuid(db: AsyncSession, todo_uuid: uuid.UUID) -> Todo:
     return await _get_todo_by_uuid_admin(db, todo_uuid)
+
+
+async def admin_patch_todo_by_uuid(
+    db: AsyncSession, todo_uuid: uuid.UUID, data: TodoUpdate
+) -> Todo:
+    todo = await _get_todo_by_uuid_admin(db, todo_uuid)
+    update_data = data.model_dump(exclude_unset=True)
+    updated_todo = await TodoDBService(db).update_todo(todo, update_data)
+    logger.info("Administrador atualizou a tarefa: %s", todo_uuid)
+    return updated_todo
 
 
 async def admin_delete_todo_by_uuid(db: AsyncSession, todo_uuid: uuid.UUID) -> None:

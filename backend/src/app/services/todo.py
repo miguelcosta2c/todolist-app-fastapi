@@ -2,20 +2,22 @@ import uuid
 from collections.abc import Sequence
 from typing import Literal
 
-from sqlalchemy import desc, select
+from sqlalchemy import desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Todo
 from app.schemas import TodoCreate, TodoListFilters
 
-
-ORDER_FIELDS: dict[str, Literal[
-    "created_at",
-    "updated_at",
-    "due_date",
-    "priority",
-    "status",
-]] = {
+ORDER_FIELDS: dict[
+    str,
+    Literal[
+        "created_at",
+        "updated_at",
+        "due_date",
+        "priority",
+        "status",
+    ],
+] = {
     "created_at": Todo.created_at,
     "updated_at": Todo.updated_at,
     "due_date": Todo.due_date,
@@ -66,16 +68,54 @@ class TodoDBService:
             )
         )
 
-    async def get_all_todos(
-        self, filters: TodoListFilters
-    ) -> Sequence[Todo]:
-        stmt = select(Todo)
+    async def count_todos(self, filters: TodoListFilters) -> int:
+        stmt = select(func.count(Todo.id))
+
+        if filters.search:
+            stmt = stmt.where(
+                or_(
+                    Todo.name.ilike(f"%{filters.search}%"),
+                    Todo.description.ilike(f"%{filters.search}%"),
+                )
+            )
 
         if filters.status:
             stmt = stmt.where(Todo.status == filters.status)
 
         if filters.priority:
             stmt = stmt.where(Todo.priority == filters.priority)
+
+        if filters.user_uuid:
+            stmt = stmt.where(Todo.user_uuid == filters.user_uuid)
+
+        if filters.created_after:
+            stmt = stmt.where(Todo.created_at >= filters.created_after)
+
+        if filters.created_before:
+            stmt = stmt.where(Todo.created_at <= filters.created_before)
+
+        total = await self.session.scalar(stmt)
+        return total or 0
+
+    async def get_all_todos(self, filters: TodoListFilters) -> Sequence[Todo]:
+        stmt = select(Todo)
+
+        if filters.search:
+            stmt = stmt.where(
+                or_(
+                    Todo.name.ilike(f"%{filters.search}%"),
+                    Todo.description.ilike(f"%{filters.search}%"),
+                )
+            )
+
+        if filters.status:
+            stmt = stmt.where(Todo.status == filters.status)
+
+        if filters.priority:
+            stmt = stmt.where(Todo.priority == filters.priority)
+
+        if filters.user_uuid:
+            stmt = stmt.where(Todo.user_uuid == filters.user_uuid)
 
         if filters.created_after:
             stmt = stmt.where(Todo.created_at >= filters.created_after)
@@ -94,16 +134,10 @@ class TodoDBService:
         result = await self.session.scalars(stmt)
         return result.all()
 
-    async def get_todo_by_uuid_admin(
-        self, todo_uuid: uuid.UUID
-    ) -> Todo | None:
-        return await self.session.scalar(
-            select(Todo).where(Todo.uuid_ == todo_uuid)
-        )
+    async def get_todo_by_uuid_admin(self, todo_uuid: uuid.UUID) -> Todo | None:
+        return await self.session.scalar(select(Todo).where(Todo.uuid_ == todo_uuid))
 
-    async def create_todo(
-        self, data: TodoCreate, user_uuid: uuid.UUID
-    ) -> Todo:
+    async def create_todo(self, data: TodoCreate, user_uuid: uuid.UUID) -> Todo:
         todo = Todo(
             name=data.name,
             description=data.description,
@@ -118,9 +152,7 @@ class TodoDBService:
 
         return todo
 
-    async def update_todo(
-        self, todo: Todo, data: dict
-    ) -> Todo:
+    async def update_todo(self, todo: Todo, data: dict) -> Todo:
         updated = False
         for field, value in data.items():
             if getattr(todo, field) != value:

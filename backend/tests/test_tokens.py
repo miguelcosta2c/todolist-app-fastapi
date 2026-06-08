@@ -12,6 +12,7 @@ import pytest
 from app.models import UserToken
 from app.schemas import RefreshTokensListFilter
 from app.services.token import (
+    count_all_user_tokens,
     delete_refresh_tokens_from_user,
     delete_token_by_id,
     get_token_by_id,
@@ -181,6 +182,120 @@ class TestListAllUserTokens:
         result: Sequence[UserToken] = await list_all_user_tokens(db, filters)
 
         assert result == [fake_token]
+
+
+# ---------------------------------------------------------------------------
+# count_all_user_tokens - branch coverage for every optional filter
+# ---------------------------------------------------------------------------
+
+
+class TestCountAllUserTokens:
+    async def test_no_filters(self) -> None:
+        db: AsyncMock = AsyncMock()
+        db.scalar.return_value = 5
+        filters: RefreshTokensListFilter = make_filters()
+
+        total = await count_all_user_tokens(db, filters)
+
+        assert total == 5
+
+    async def test_filter_by_id(self) -> None:
+        db: AsyncMock = AsyncMock()
+        db.scalar.return_value = 1
+        filters: RefreshTokensListFilter = make_filters(id=42)
+
+        total = await count_all_user_tokens(db, filters)
+
+        assert total == 1
+
+    async def test_filter_by_user_uuid(self) -> None:
+        db: AsyncMock = AsyncMock()
+        db.scalar.return_value = 2
+        filters: RefreshTokensListFilter = make_filters(user_uuid=uuid4())
+
+        total = await count_all_user_tokens(db, filters)
+
+        assert total == 2
+
+    async def test_filter_is_revoked(self) -> None:
+        db: AsyncMock = AsyncMock()
+        db.scalar.return_value = 0
+        filters: RefreshTokensListFilter = make_filters(is_revoked=True)
+
+        total = await count_all_user_tokens(db, filters)
+
+        assert total == 0
+
+    async def test_filter_expires_after(self) -> None:
+        db: AsyncMock = AsyncMock()
+        db.scalar.return_value = 3
+        filters: RefreshTokensListFilter = make_filters(
+            expires_after=datetime(2025, 1, 1, tzinfo=UTC)
+        )
+
+        total = await count_all_user_tokens(db, filters)
+
+        assert total == 3
+
+    async def test_filter_expires_before(self) -> None:
+        db: AsyncMock = AsyncMock()
+        db.scalar.return_value = 1
+        filters: RefreshTokensListFilter = make_filters(
+            expires_before=datetime(2030, 1, 1, tzinfo=UTC)
+        )
+
+        total = await count_all_user_tokens(db, filters)
+
+        assert total == 1
+
+    async def test_filter_created_after(self) -> None:
+        db: AsyncMock = AsyncMock()
+        db.scalar.return_value = 2
+        filters: RefreshTokensListFilter = make_filters(
+            created_after=datetime(2025, 1, 1, tzinfo=UTC)
+        )
+
+        total = await count_all_user_tokens(db, filters)
+
+        assert total == 2
+
+    async def test_filter_created_before(self) -> None:
+        db: AsyncMock = AsyncMock()
+        db.scalar.return_value = 1
+        filters: RefreshTokensListFilter = make_filters(
+            created_before=datetime(2030, 1, 1, tzinfo=UTC)
+        )
+
+        total = await count_all_user_tokens(db, filters)
+
+        assert total == 1
+
+    async def test_returns_zero_when_scalar_is_none(self) -> None:
+        db: AsyncMock = AsyncMock()
+        db.scalar.return_value = None
+        filters: RefreshTokensListFilter = make_filters()
+
+        total = await count_all_user_tokens(db, filters)
+
+        assert total == 0
+
+    async def test_all_filters_combined(self) -> None:
+        db: AsyncMock = AsyncMock()
+        db.scalar.return_value = 1
+        now: datetime = datetime(2025, 6, 1, tzinfo=UTC)
+        filters: RefreshTokensListFilter = make_filters(
+            id=1,
+            user_uuid=uuid4(),
+            is_revoked=False,
+            expires_after=now,
+            expires_before=datetime(2030, 1, 1, tzinfo=UTC),
+            created_after=now,
+            created_before=datetime(2030, 1, 1, tzinfo=UTC),
+        )
+
+        total = await count_all_user_tokens(db, filters)
+
+        assert total == 1
 
 
 # ---------------------------------------------------------------------------

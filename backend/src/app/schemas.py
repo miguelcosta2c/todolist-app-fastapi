@@ -46,7 +46,7 @@ class Message(AliasSchema):
 # =============================
 
 
-class UserListFilters(AliasSchema):
+class UserListFilters(BaseModel):
     username: str | None = None
     email: str | None = None
     status: UserStatus | None = None
@@ -146,6 +146,8 @@ class UserUpdate(InputSchema):
         min_length=8,
         max_length=128,
     )
+    status: UserStatus | None = None
+    is_superuser: bool | None = None
 
     @field_validator("new_password")
     @classmethod
@@ -183,6 +185,7 @@ class UserPrivate(ResponseSchema):
     username: str
     email: EmailStr
     status: UserStatus
+    is_superuser: bool
     last_login_at: datetime | None
     created_at: datetime
 
@@ -241,7 +244,7 @@ class RefreshTokenSchema(ResponseSchema):
     created_at: datetime
 
 
-class RefreshTokensListFilter(AliasSchema):
+class RefreshTokensListFilter(BaseModel):
     id: int | None = None
     user_uuid: uuid.UUID | None = None
     is_revoked: bool | None = None
@@ -273,9 +276,11 @@ class RefreshTokensList(AliasSchema):
 # =============================
 
 
-class TodoListFilters(AliasSchema):
+class TodoListFilters(BaseModel):
     status: TodoStatus | None = None
     priority: TodoPriority | None = None
+    search: str | None = None
+    user_uuid: uuid.UUID | None = None
 
     created_after: datetime | None = None
     created_before: datetime | None = None
@@ -331,6 +336,18 @@ class TodoSchema(ResponseSchema):
     user_uuid: uuid.UUID
     created_at: datetime
     updated_at: datetime
+
+
+class AdminTodoSchema(TodoSchema):
+    username: str | None = None
+
+
+class AdminTodoList(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    result: list[AdminTodoSchema]
+    total: int
+    offset: int
+    limit: int
 
 
 class TodoList(BaseModel):

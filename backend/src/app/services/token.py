@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from sqlalchemy import delete, desc, select
+from sqlalchemy import delete, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import User, UserToken
@@ -13,6 +13,36 @@ ORDER_FIELDS = {
     "expires_at": UserToken.expires_at,
     "created_at": UserToken.created_at,
 }
+
+
+async def count_all_user_tokens(
+    db: AsyncSession, filters: RefreshTokensListFilter
+) -> int:
+    stmt = select(func.count(UserToken.id))
+
+    if filters.id:
+        stmt = stmt.where(UserToken.id == filters.id)
+
+    if filters.user_uuid:
+        stmt = stmt.where(UserToken.user_uuid == filters.user_uuid)
+
+    if filters.is_revoked is not None:
+        stmt = stmt.where(UserToken.is_revoked == filters.is_revoked)
+
+    if filters.expires_after:
+        stmt = stmt.where(UserToken.expires_at > filters.expires_after)
+
+    if filters.expires_before:
+        stmt = stmt.where(UserToken.expires_at < filters.expires_before)
+
+    if filters.created_after:
+        stmt = stmt.where(UserToken.created_at > filters.created_after)
+
+    if filters.created_before:
+        stmt = stmt.where(UserToken.created_at < filters.created_before)
+
+    total = await db.scalar(stmt)
+    return total or 0
 
 
 async def list_all_user_tokens(

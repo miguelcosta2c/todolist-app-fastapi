@@ -152,6 +152,51 @@ async def test_list_tokens_success(
 
 
 # =============================
+# PATCH /admin/tokens/{token_id}/revoke
+# =============================
+
+
+async def test_revoke_token_success(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    await _create_user(session, ADMIN_DATA, is_superuser=True)
+    await _create_user(session, USER_DATA)
+    admin_token = await _login(client, ADMIN_DATA["email"], ADMIN_DATA["password"])
+
+    # Login as regular user to create a refresh token
+    await _login(client, USER_DATA["email"], USER_DATA["password"])
+
+    # List tokens to get the ID
+    list_resp = await client.get(
+        "/admin/tokens/",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    token_id = list_resp.json()["result"][0]["id"]
+
+    response = await client.patch(
+        f"/admin/tokens/{token_id}/revoke",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["message"] == "Token revogado com sucesso."
+
+
+async def test_revoke_token_not_found(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    await _create_user(session, ADMIN_DATA, is_superuser=True)
+    token = await _login(client, ADMIN_DATA["email"], ADMIN_DATA["password"])
+
+    response = await client.patch(
+        "/admin/tokens/99999/revoke",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+# =============================
 # DELETE /admin/tokens/{token_id}
 # =============================
 
@@ -312,12 +357,72 @@ async def test_admin_list_todos_filter_by_created_after(
     response = await client.get(
         "/admin/todos",
         headers={"Authorization": f"Bearer {token}"},
-        params={"createdAfter": "2099-01-01T00:00:00Z"},
+        params={"created_after": "2099-01-01T00:00:00Z"},
     )
 
     assert response.status_code == status.HTTP_200_OK
     body = response.json()
     assert body["result"] == []
+
+
+async def test_admin_list_todos_filter_by_search(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    await _create_user(session, ADMIN_DATA, is_superuser=True)
+    await _create_user(session, USER_DATA)
+    token = await _login(client, ADMIN_DATA["email"], ADMIN_DATA["password"])
+
+    user = await UserDBService(session).get_user_by(email=USER_DATA["email"])
+    await TodoDBService(session).create_todo(
+        TodoCreate(name="Comprar pao"), user.uuid_
+    )
+    await TodoDBService(session).create_todo(
+        TodoCreate(name="Estudar Python"), user.uuid_
+    )
+
+    response = await client.get(
+        "/admin/todos",
+        headers={"Authorization": f"Bearer {token}"},
+        params={"search": "pao"},
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    body = response.json()
+    assert len(body["result"]) == 1
+    assert body["result"][0]["name"] == "Comprar pao"
+
+
+async def test_admin_list_todos_filter_by_user_uuid(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    await _create_user(session, ADMIN_DATA, is_superuser=True)
+    await _create_user(session, USER_DATA)
+    await _create_user(
+        session, {"username": "outro", "email": "outro@email.com",
+                   "password": "User123@", "confirm_password": "User123@"}
+    )
+    token = await _login(client, ADMIN_DATA["email"], ADMIN_DATA["password"])
+
+    user1 = await UserDBService(session).get_user_by(email=USER_DATA["email"])
+    user2 = await UserDBService(session).get_user_by(email="outro@email.com")
+    assert user1 is not None and user2 is not None
+    await TodoDBService(session).create_todo(
+        TodoCreate(name="Todo do user1"), user1.uuid_
+    )
+    await TodoDBService(session).create_todo(
+        TodoCreate(name="Todo do user2"), user2.uuid_
+    )
+
+    response = await client.get(
+        "/admin/todos",
+        headers={"Authorization": f"Bearer {token}"},
+        params={"user_uuid": str(user1.uuid_)},
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    body = response.json()
+    assert len(body["result"]) == 1
+    assert body["result"][0]["name"] == "Todo do user1"
 
 
 async def test_admin_list_todos_filter_by_created_before(
@@ -335,7 +440,7 @@ async def test_admin_list_todos_filter_by_created_before(
     response = await client.get(
         "/admin/todos",
         headers={"Authorization": f"Bearer {token}"},
-        params={"createdBefore": "2020-01-01T00:00:00Z"},
+        params={"created_before": "2020-01-01T00:00:00Z"},
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -377,6 +482,48 @@ async def test_admin_get_todo_not_found(
 
     response = await client.get(
         f"/admin/todos/{uuid.uuid4()}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+# =============================
+# PATCH /admin/todos/{todo_uuid}
+# =============================
+
+
+async def test_admin_patch_todo_success(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    await _create_user(session, ADMIN_DATA, is_superuser=True)
+    await _create_user(session, USER_DATA)
+    token = await _login(client, ADMIN_DATA["email"], ADMIN_DATA["password"])
+
+    user = await UserDBService(session).get_user_by(email=USER_DATA["email"])
+    todo = await TodoDBService(session).create_todo(
+        TodoCreate(name="Tarefa original"), user.uuid_
+    )
+
+    response = await client.patch(
+        f"/admin/todos/{todo.uuid_}",
+        json={"name": "Tarefa alterada pelo admin"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["name"] == "Tarefa alterada pelo admin"
+
+
+async def test_admin_patch_todo_not_found(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    await _create_user(session, ADMIN_DATA, is_superuser=True)
+    token = await _login(client, ADMIN_DATA["email"], ADMIN_DATA["password"])
+
+    response = await client.patch(
+        f"/admin/todos/{uuid.uuid4()}",
+        json={"name": "Qualquer"},
         headers={"Authorization": f"Bearer {token}"},
     )
 

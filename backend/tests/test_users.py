@@ -104,7 +104,6 @@ async def test_patch_me_username(client: AsyncClient, session: AsyncSession) -> 
         headers={"Authorization": f"Bearer {token}"},
         json={
             "username": "novo_username",
-            "email": None,
             "password": USER_DATA["password"],
             "new_password": USER_DATA["password"],
         },
@@ -125,7 +124,6 @@ async def test_patch_me_wrong_password(
         headers={"Authorization": f"Bearer {token}"},
         json={
             "username": "novo_username",
-            "email": None,
             "password": "SenhaErrada@123",
             "new_password": "NovaSenha@123",
         },
@@ -139,7 +137,6 @@ async def test_patch_me_unauthorized(client: AsyncClient) -> None:
         "/users/me",
         json={
             "username": "novo",
-            "email": None,
             "password": "senha123",
             "new_password": "nova_senha",
         },
@@ -448,3 +445,105 @@ async def test_get_user_by_uuid_only_active_false(
     )
     assert found is not None
     assert found.uuid_ == user.uuid_
+
+
+# =============================
+# count_users filter branches
+# =============================
+
+
+async def test_count_users_default(session: AsyncSession) -> None:
+    await create_user(session)
+    await create_user(session, username="outro", email="outro@email.com")
+
+    total = await UserDBService(session).count_users(
+        UserListFilters(offset=0, limit=10)
+    )
+    assert total == 2
+
+
+async def test_count_users_include_deleted(session: AsyncSession) -> None:
+    await create_user(session)
+    user = await UserDBService(session).get_user_by(email=USER_DATA["email"])
+    assert user is not None
+    await UserDBService(session).delete_user(user)
+
+    total = await UserDBService(session).count_users(
+        UserListFilters(offset=0, limit=10, include_deleted=True)
+    )
+    assert total == 1
+
+    total = await UserDBService(session).count_users(
+        UserListFilters(offset=0, limit=10, include_deleted=False)
+    )
+    assert total == 0
+
+
+async def test_count_users_filter_by_username(session: AsyncSession) -> None:
+    await create_user(session, username="joao", email="joao@test.com")
+    await create_user(session, username="jose", email="jose@test.com")
+
+    total = await UserDBService(session).count_users(
+        UserListFilters(offset=0, limit=10, username="joa")
+    )
+    assert total == 1
+
+
+async def test_count_users_filter_by_email(session: AsyncSession) -> None:
+    await create_user(session, email="joao@test.com")
+    await create_user(session, username="jose", email="jose@outro.com")
+
+    total = await UserDBService(session).count_users(
+        UserListFilters(offset=0, limit=10, email="test")
+    )
+    assert total == 1
+
+
+async def test_count_users_filter_by_status(session: AsyncSession) -> None:
+    await create_user(session)
+    user = await UserDBService(session).get_user_by(email=USER_DATA["email"])
+    assert user is not None
+    await UserDBService(session).delete_user(user)
+    await create_user(session, username="outro", email="outro@email.com")
+
+    total = await UserDBService(session).count_users(
+        UserListFilters(
+            offset=0, limit=10, status=UserStatus.DELETED, include_deleted=True
+        )
+    )
+    assert total == 1
+
+
+async def test_count_users_filter_by_is_superuser(session: AsyncSession) -> None:
+    await create_user(session)
+    await UserDBService(session).create_user(
+        UserCreate(**{**USER_DATA, "username": "admin", "email": "admin@test.com"}),
+        is_superuser=True,
+    )
+
+    total = await UserDBService(session).count_users(
+        UserListFilters(offset=0, limit=10, is_superuser=True)
+    )
+    assert total == 1
+
+
+async def test_count_users_filter_by_created_after(session: AsyncSession) -> None:
+    await create_user(session)
+
+    total = await UserDBService(session).count_users(
+        UserListFilters(
+            offset=0, limit=10, created_after=datetime.now(TIMEZONE),
+        )
+    )
+    assert total == 0
+
+
+async def test_count_users_filter_by_created_before(session: AsyncSession) -> None:
+    await create_user(session)
+
+    total = await UserDBService(session).count_users(
+        UserListFilters(
+            offset=0, limit=10, created_before=datetime.now(TIMEZONE),
+        )
+    )
+    assert total == 1

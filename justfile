@@ -3,3 +3,10 @@ create_migration nome:
 
 migrate:
     docker compose run --rm api alembic upgrade head
+
+build:
+    docker compose build
+
+up:
+    docker compose up -d
+

@@ -1,12 +1,14 @@
 import uuid
+from datetime import datetime
 from typing import Any
 
 from fastapi import status
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.settings import TIMEZONE
 from app.models.todo import TodoPriority, TodoStatus
-from app.schemas import TodoCreate, UserCreate
+from app.schemas import TodoCreate, TodoListFilters, UserCreate
 from app.services.todo import TodoDBService
 from app.services.user import UserDBService
 
@@ -155,7 +157,7 @@ async def test_list_todos_filter_by_created_after(
     response = await client.get(
         "/todos/",
         headers={"Authorization": f"Bearer {token}"},
-        params={"createdAfter": "2099-01-01T00:00:00Z"},
+        params={"created_after": "2099-01-01T00:00:00Z"},
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -178,7 +180,7 @@ async def test_list_todos_filter_by_created_before(
     response = await client.get(
         "/todos/",
         headers={"Authorization": f"Bearer {token}"},
-        params={"createdBefore": "2020-01-01T00:00:00Z"},
+        params={"created_before": "2020-01-01T00:00:00Z"},
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -365,3 +367,79 @@ async def test_delete_todo_not_found(
     )
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+# =============================
+# count_todos filter branches
+# =============================
+
+
+async def test_count_todos_default(session: AsyncSession) -> None:
+    await create_user(session)
+    user = await UserDBService(session).get_user_by(email=USER_DATA["email"])
+    assert user is not None
+    await TodoDBService(session).create_todo(TodoCreate(name="Tarefa A"), user.uuid_)
+
+    total = await TodoDBService(session).count_todos(TodoListFilters())
+    assert total == 1
+
+
+async def test_count_todos_filter_by_search(session: AsyncSession) -> None:
+    await create_user(session)
+    user = await UserDBService(session).get_user_by(email=USER_DATA["email"])
+    assert user is not None
+    await TodoDBService(session).create_todo(TodoCreate(name="Comprar pao"), user.uuid_)
+    await TodoDBService(session).create_todo(TodoCreate(name="Estudar Python"), user.uuid_)
+
+    total = await TodoDBService(session).count_todos(
+        TodoListFilters(search="pao")
+    )
+    assert total == 1
+
+
+async def test_count_todos_filter_by_user_uuid(session: AsyncSession) -> None:
+    await create_user(session)
+    await create_user(session, username="outro", email="outro@email.com")
+    user1 = await UserDBService(session).get_user_by(email=USER_DATA["email"])
+    user2 = await UserDBService(session).get_user_by(email="outro@email.com")
+    assert user1 is not None and user2 is not None
+    await TodoDBService(session).create_todo(TodoCreate(name="Tarefa 1"), user1.uuid_)
+    await TodoDBService(session).create_todo(TodoCreate(name="Tarefa 2"), user2.uuid_)
+
+    total = await TodoDBService(session).count_todos(
+        TodoListFilters(user_uuid=user1.uuid_)
+    )
+    assert total == 1
+
+
+# =============================
+# get_all_todos filter branches
+# =============================
+
+
+async def test_get_all_todos_filter_by_search(session: AsyncSession) -> None:
+    await create_user(session)
+    user = await UserDBService(session).get_user_by(email=USER_DATA["email"])
+    assert user is not None
+    await TodoDBService(session).create_todo(TodoCreate(name="Comprar pao"), user.uuid_)
+    await TodoDBService(session).create_todo(TodoCreate(name="Estudar Python"), user.uuid_)
+
+    todos = await TodoDBService(session).get_all_todos(
+        TodoListFilters(search="pao")
+    )
+    assert len(todos) == 1
+
+
+async def test_get_all_todos_filter_by_user_uuid(session: AsyncSession) -> None:
+    await create_user(session)
+    await create_user(session, username="outro", email="outro@email.com")
+    user1 = await UserDBService(session).get_user_by(email=USER_DATA["email"])
+    user2 = await UserDBService(session).get_user_by(email="outro@email.com")
+    assert user1 is not None and user2 is not None
+    await TodoDBService(session).create_todo(TodoCreate(name="Tarefa 1"), user1.uuid_)
+    await TodoDBService(session).create_todo(TodoCreate(name="Tarefa 2"), user2.uuid_)
+
+    todos = await TodoDBService(session).get_all_todos(
+        TodoListFilters(user_uuid=user1.uuid_)
+    )
+    assert len(todos) == 1
