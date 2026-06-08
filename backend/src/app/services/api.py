@@ -168,10 +168,8 @@ async def get_user_by_uuid(db: AsyncSession, user_uuid: uuid.UUID) -> User:
     return await _get_user_by_uuid(UserDBService(db), user_uuid)
 
 
-async def _get_user_by_uuid(
-    user_service: type[UserDBService], user_uuid: uuid.UUID
-) -> User:
-    user = await user_service.get_user_by_uuid(user_uuid, only_active=False)
+async def _get_user_by_uuid(user_service: UserDBService, user_uuid: uuid.UUID) -> User:
+    user = await user_service.get_user_by_uuid(user_uuid=user_uuid, only_active=False)
     if user is None:
         logger.warning("Usuário não encontrado para o UUID: %s", user_uuid)
         raise HTTPException(
