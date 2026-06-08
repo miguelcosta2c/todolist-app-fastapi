@@ -102,7 +102,7 @@ jobs:
 
       - name: Instalar dependências do backend (Incluindo ferramentas de teste)
         working-directory: backend
-        run: uv sync --frozen-lockfile
+        run: uv sync --frozen
 
       - name: Executar testes com cobertura
         working-directory: backend
