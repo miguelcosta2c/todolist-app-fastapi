@@ -48,3 +48,10 @@ sql/
 
 # IDE
 .vscode/
+.idea/
+
+# Credentials
+secrets.txt
+
+# IDE
+.vscode/

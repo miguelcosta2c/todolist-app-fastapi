@@ -1,3 +1,4 @@
+import os
 from collections.abc import AsyncGenerator, Generator
 from contextlib import AbstractContextManager, contextmanager
 from datetime import datetime
@@ -17,16 +18,21 @@ from app.core.settings import TIMEZONE
 from app.db import Base
 from app.main import app
 
-
-@pytest.fixture(scope="session")
-def postgres_container() -> Generator[PostgresContainer]:
-    with PostgresContainer("postgres:17-alpine") as postgres:
-        yield postgres
+CI_DATABASE_URL = os.getenv("DATABASE_URL")
 
 
 @pytest.fixture(scope="session")
-def engine(postgres_container: PostgresContainer) -> AsyncEngine:
-    url = postgres_container.get_connection_url(driver="asyncpg")
+def postgres_container() -> Generator[PostgresContainer | None]:
+    if CI_DATABASE_URL:
+        yield None
+    else:
+        with PostgresContainer("postgres:17-alpine") as postgres:
+            yield postgres
+
+
+@pytest.fixture(scope="session")
+def engine(postgres_container: PostgresContainer | None) -> AsyncEngine:
+    url = CI_DATABASE_URL or postgres_container.get_connection_url(driver="asyncpg")
     return create_async_engine(url, echo=False)
 
 
