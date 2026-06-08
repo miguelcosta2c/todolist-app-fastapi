@@ -220,7 +220,7 @@ class TestCountAllUserTokens:
         assert total == count
 
     async def test_filter_is_revoked(self) -> None:
-        count = 2
+        count = 0
         db: AsyncMock = AsyncMock()
         db.scalar.return_value = 0
         filters: RefreshTokensListFilter = make_filters(is_revoked=True)
