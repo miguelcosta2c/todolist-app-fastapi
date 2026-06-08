@@ -271,16 +271,6 @@ O projeto conta com um fluxo automatizado via **GitHub Actions** em cada _Pull R
 
 ---
 
-## 🗺️ Roadmap & Evoluções Futuras
-
-- [ ] Implementação de testes automatizados no frontend (Vitest + React Testing Library).
-- [ ] Fluxo de recuperação de senhas ("Esqueci minha senha") com envio de e-mails.
-- [ ] Criação de tags e categorias customizadas para melhor organização das tarefas.
-- [ ] Sistema de colaboração e compartilhamento de listas de tarefas entre usuários.
-- [ ] Integração de WebSockets para sincronização de alterações em tempo real.
-
----
-
 Desenvolvido sob a licença **MIT**.
 
 ```
