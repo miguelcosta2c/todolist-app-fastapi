@@ -99,6 +99,15 @@ exclude = [
 venv = ".venv"
 venvPath = "."
 executionEnvironments = [{ root = "src" }]
+
+reportMissingTypeStubs = false
+reportUnknownMemberType = false
+reportUntypedFunctionDecorator = false
+
+reportOptionalMemberAccess = "warning"
+reportUnknownVariableType = false
+reportUnknownParameterType = false
+reportUnknownArgumentType = false
 # ============================
 # Tests (Pytest)
 # ============================

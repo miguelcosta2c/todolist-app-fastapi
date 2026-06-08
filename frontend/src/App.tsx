@@ -1,25 +1,25 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { QueryProvider } from '@/providers/QueryProvider'
-import { AuthProvider } from '@/providers/AuthProvider'
-import { ThemeProvider } from '@/providers/ThemeProvider'
-import { ErrorBoundary } from '@/components/ErrorBoundary'
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
-import { AdminRoute } from '@/components/layout/AdminRoute'
-import { Layout } from '@/components/layout/Layout'
-import { AdminLayout } from '@/components/admin/AdminLayout'
-import { Login } from '@/pages/Login'
-import { Register } from '@/pages/Register'
-import { Dashboard } from '@/pages/Dashboard'
-import { TodoNew } from '@/pages/TodoNew'
-import { TodoEdit } from '@/pages/TodoEdit'
-import { AdminDashboard } from '@/pages/admin/Dashboard'
-import { AdminUsers } from '@/pages/admin/Users'
-import { AdminTodos } from '@/pages/admin/Todos'
-import { AdminTokens } from '@/pages/admin/Tokens'
-import { Toaster } from '@/components/ui/sonner'
-import { Button } from '@/components/ui/button'
-import { FileQuestion } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { QueryProvider } from "@/providers/QueryProvider";
+import { AuthProvider } from "@/providers/AuthProvider";
+import { ThemeProvider } from "@/providers/ThemeProvider";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
+import { AdminRoute } from "@/components/layout/AdminRoute";
+import { Layout } from "@/components/layout/Layout";
+import { AdminLayout } from "@/components/admin/AdminLayout";
+import { Login } from "@/pages/Login";
+import { Register } from "@/pages/Register";
+import { Dashboard } from "@/pages/Dashboard";
+import { TodoNew } from "@/pages/TodoNew";
+import { TodoEdit } from "@/pages/TodoEdit";
+import { AdminDashboard } from "@/pages/admin/Dashboard";
+import { AdminUsers } from "@/pages/admin/Users";
+import { AdminTodos } from "@/pages/admin/Todos";
+import { AdminTokens } from "@/pages/admin/Tokens";
+import { Toaster } from "@/components/ui/sonner";
+import { Button } from "@/components/ui/button";
+import { FileQuestion } from "lucide-react";
+import { Link } from "react-router-dom";
 
 function NotFound() {
   return (
@@ -33,7 +33,7 @@ function NotFound() {
         <Link to="/">Voltar ao início</Link>
       </Button>
     </div>
-  )
+  );
 }
 
 export function App() {
@@ -70,5 +70,5 @@ export function App() {
         </QueryProvider>
       </ThemeProvider>
     </ErrorBoundary>
-  )
+  );
 }
