@@ -2,7 +2,6 @@
 name = "todolist-app"
 version = "0.0.1"
 description = "project"
-readme = "README.md"
 license = "MIT"
 authors = [{ name = "Miguel Costa", email = "miguelcosmecosta@gmail.com" }]
 requires-python = ">=3.13"
@@ -103,22 +102,10 @@ executionEnvironments = [{ root = "src" }]
 reportMissingTypeStubs = false
 reportUnknownMemberType = false
 reportUntypedFunctionDecorator = false
-
-# --- CONFIGURAÇÕES ALTERADAS/ADICIONADAS DAQUI PARA BAIXO ---
-
-# 1. Remove os 15 avisos de "uuid_ is not a known attribute of None" nos testes
 reportOptionalMemberAccess = "none"
-
-# 2. Desativa o erro do dict do SQLAlchemy no todo.py (InstrumentedAttribute)
 reportAssignmentType = "none"
-
-# 3. Desativa o erro do handler de exceção no main.py
 reportArgumentType = "none"
-
-# 4. Desativa o erro do retorno do Health no main.py (caso ainda use dict)
 reportReturnType = "none"
-
-# Mantendo as outras que você já tinha:
 reportUnknownVariableType = false
 reportUnknownParameterType = false
 reportUnknownArgumentType = false
