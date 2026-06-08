@@ -65,9 +65,7 @@ async def get_current_user(token: Token, db: SessionDB) -> User:
         ) from err
 
     if payload.get("type") != "access":
-        logger.warning(
-            "Tipo de token inválido para acesso: %s", payload.get("type")
-        )
+        logger.warning("Tipo de token inválido para acesso: %s", payload.get("type"))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="O token informado não é válido para esta operação.",

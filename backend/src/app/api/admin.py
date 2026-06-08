@@ -42,9 +42,7 @@ async def list_users(request: Request, db: SessionDB, filters: UsersFilter) -> A
 
 @router.get("/users/{user_uuid}", response_model=UserSchema)
 @limiter.limit(settings.RATE_LIMIT_ADMIN)
-async def get_user(
-    request: Request, db: SessionDB, user_uuid: uuid.UUID
-) -> Any:
+async def get_user(request: Request, db: SessionDB, user_uuid: uuid.UUID) -> Any:
     return await api.get_user_by_uuid(db, user_uuid)
 
 
@@ -61,9 +59,7 @@ async def patch_user(
 
 @router.delete("/users/{user_uuid}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit(settings.RATE_LIMIT_ADMIN)
-async def delete_user(
-    request: Request, db: SessionDB, user_uuid: uuid.UUID
-) -> None:
+async def delete_user(request: Request, db: SessionDB, user_uuid: uuid.UUID) -> None:
     await api.delete_user_by_uuid(db, user_uuid)
 
 
@@ -74,9 +70,7 @@ async def delete_user(
 
 @router.get("/tokens/", response_model=RefreshTokensList)
 @limiter.limit(settings.RATE_LIMIT_ADMIN)
-async def list_tokens(
-    request: Request, db: SessionDB, filters: TokensFilter
-) -> Any:
+async def list_tokens(request: Request, db: SessionDB, filters: TokensFilter) -> Any:
     return await api.list_all_refresh_tokens(db, filters)
 
 
@@ -91,9 +85,7 @@ async def revoke_token(
 
 @router.delete("/tokens/{token_id}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit(settings.RATE_LIMIT_ADMIN)
-async def delete_token(
-    request: Request, db: SessionDB, token_id: int
-) -> None:
+async def delete_token(request: Request, db: SessionDB, token_id: int) -> None:
     await api.delete_token_by_id(db, token_id)
 
 
@@ -104,17 +96,13 @@ async def delete_token(
 
 @router.get("/todos", response_model=AdminTodoList)
 @limiter.limit(settings.RATE_LIMIT_ADMIN)
-async def list_todos(
-    request: Request, db: SessionDB, filters: TodosFilter
-) -> Any:
+async def list_todos(request: Request, db: SessionDB, filters: TodosFilter) -> Any:
     return await api.list_all_todos(db, filters)
 
 
 @router.get("/todos/{todo_uuid}", response_model=TodoResponse)
 @limiter.limit(settings.RATE_LIMIT_ADMIN)
-async def get_todo(
-    request: Request, db: SessionDB, todo_uuid: uuid.UUID
-) -> Any:
+async def get_todo(request: Request, db: SessionDB, todo_uuid: uuid.UUID) -> Any:
     return await api.admin_get_todo_by_uuid(db, todo_uuid)
 
 
@@ -131,7 +119,5 @@ async def patch_todo(
 
 @router.delete("/todos/{todo_uuid}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit(settings.RATE_LIMIT_ADMIN)
-async def delete_todo(
-    request: Request, db: SessionDB, todo_uuid: uuid.UUID
-) -> None:
+async def delete_todo(request: Request, db: SessionDB, todo_uuid: uuid.UUID) -> None:
     await api.admin_delete_todo_by_uuid(db, todo_uuid)
